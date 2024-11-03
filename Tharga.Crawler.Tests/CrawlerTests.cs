@@ -3,7 +3,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Tharga.Crawler.Downloader;
-using Tharga.Crawler.Processor;
+using Tharga.Crawler.Entity;
+using Tharga.Crawler.PageProcessor;
 using Tharga.Crawler.Scheduler;
 using Xunit;
 
@@ -20,7 +21,7 @@ public class CrawlerTests
         var options = new CrawlerOptions { NumberOfCrawlers = 1 };
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
         scheduler.Setup(x => x.GetAllCrawled()).Returns(Array.Empty<Crawled>().ToAsyncEnumerable);
-        scheduler.Setup(x => x.Enqueue(It.IsAny<ToCrawl>())).Returns(Task.CompletedTask);
+        scheduler.Setup(x => x.EnqueueAsync(It.IsAny<ToCrawl>(), It.IsAny<SchedulerOptions>())).Returns(Task.CompletedTask);
         scheduler.Setup(x => x.TakeNextToCrawlAsync(It.IsAny<CancellationToken>())).ReturnsAsync((ToCrawl)null);
         var pageProcessor = new Mock<IPageProcessor>(MockBehavior.Strict);
         var httpDownloader = new Mock<IDownloader>(MockBehavior.Strict);

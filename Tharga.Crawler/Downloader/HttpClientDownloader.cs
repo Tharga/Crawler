@@ -1,6 +1,8 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Mime;
 using Microsoft.Extensions.Logging;
+using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Downloader;
 
@@ -13,32 +15,32 @@ public class HttpClientDownloader : IDownloader
         _logger = logger;
     }
 
-    public async Task<CrawlContent> GetAsync(ToCrawl toCrawl, CancellationToken cancellationToken)
+    public async Task<CrawlContent> GetAsync(ToCrawl toCrawl, DownloadOptions downloadOptions, CancellationToken cancellationToken)
     {
-        //TODO: Add polly
-        //TODO: Handle redirects
-        //TODO: Add retry-feature
-
         var handler = new HttpClientHandler
         {
             AllowAutoRedirect = false,
-            ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
         };
 
         (HttpResponseMessage Response, Uri[] Redirects) result = default;
         try
         {
             using var client = new HttpClient(handler);
+            client.Timeout = downloadOptions?.Timeout ?? TimeSpan.FromSeconds(100);
             result = await GetWithRedirectsAsync(client, toCrawl.RequestUri, cancellationToken);
             var content = await result.Response.Content.ReadAsByteArrayAsync(cancellationToken);
 
             return new CrawlContent
             {
                 RequestUri = toCrawl.RequestUri,
-                StatusCode = result.Response.StatusCode,
+                StatusCode = (int)result.Response.StatusCode,
                 Redirects = result.Redirects,
                 ContentType = new ContentType(result.Response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream"),
                 Content = content,
+                Parent = toCrawl.Parent,
+                RetryCount = toCrawl.RetryCount,
+                Message = null
             };
         }
         catch (TaskCanceledException)
@@ -49,14 +51,17 @@ public class HttpClientDownloader : IDownloader
         {
             _logger.LogError(e, e.Message);
 
-            //TODO: Add another error message to this item.
+            Debugger.Break(); //TODO: Consider retry
             return new CrawlContent
             {
                 RequestUri = toCrawl.RequestUri,
-                StatusCode = null,
+                StatusCode = 599,
                 Redirects = result.Redirects ?? [],
                 ContentType = null,
                 Content = null,
+                Message = e.Message,
+                Parent = toCrawl.Parent,
+                RetryCount = toCrawl.RetryCount
             };
         }
         finally
@@ -77,10 +82,7 @@ public class HttpClientDownloader : IDownloader
 
             if (IsRedirect(response.StatusCode))
             {
-                if (redirects.Count >= 20)
-                {
-                    throw new InvalidOperationException("Exceeded maximum number of redirects.");
-                }
+                if (redirects.Count >= 20) throw new InvalidOperationException("Exceeded maximum number of redirects.");
 
                 // Get the new location and add it to the redirects list
                 if (response.Headers.Location != null)

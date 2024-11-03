@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Tharga.Crawler.Entity;
 using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
@@ -19,6 +20,27 @@ public class MemoryScheduler : IScheduler
     }
 
     public event EventHandler<SchedulerEventArgs> SchedulerEvent;
+
+    public Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
+    {
+        if (options?.MaxQueueCount != null)
+        {
+            var crawlingCount = _queue.Count + _crawling.Count + _crawled.Count;
+            if (crawlingCount >= options?.MaxQueueCount)
+            {
+                _logger.LogWarning("Queue has {queueCount} items and is full.", crawlingCount);
+                return Task.CompletedTask;
+            }
+        }
+
+        if (_crawled.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
+        if (_crawling.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
+        if (_blocked.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
+
+        _queue.TryAdd(toCrawl.RequestUri, toCrawl);
+        SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
+        return Task.CompletedTask;
+    }
 
     public Task<ToCrawl> TakeNextToCrawlAsync(CancellationToken cancellationToken)
     {
@@ -56,7 +78,7 @@ public class MemoryScheduler : IScheduler
         }
         else
         {
-            //TODO: How do we avoid this?
+            //TODO: Try to fix this issue
             _logger.LogWarning("Already completed '{uri}'.", result.FinalUri.AbsoluteUri);
         }
 
@@ -66,17 +88,6 @@ public class MemoryScheduler : IScheduler
 
         SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
 
-        return Task.CompletedTask;
-    }
-
-    public Task Enqueue(ToCrawl toCrawl)
-    {
-        if (_crawled.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
-        if (_crawling.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
-        if (_blocked.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
-
-        _queue.TryAdd(toCrawl.RequestUri, toCrawl);
-        SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
         return Task.CompletedTask;
     }
 

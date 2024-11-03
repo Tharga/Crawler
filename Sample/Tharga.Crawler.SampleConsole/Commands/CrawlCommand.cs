@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using Tharga.Console.Commands.Base;
+﻿using Tharga.Console.Commands.Base;
+using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler.SampleConsole.Commands;
 
@@ -18,13 +18,20 @@ internal class CrawlCommand : AsyncActionCommandBase
         var uri = QueryParam("Url", param, [new Uri("https://eplicta.se/")]);
 
         _crawler.Scheduler.SchedulerEvent += (_, e) => { OutputInformation($"Q: {e.QueueCount}, C: {e.CrawlingCount}, H: {e.CrawledCount}"); };
+        //_crawler.CrawlerCompleteEvent += (_, _) => { OutputInformation("Crawl completed."); };
+        //_crawler.PageCompleteEvent += (_, e) => { OutputInformation($"Page '{e.CrawlContent.FinalUri}' completed."); };
 
-        _crawler.CrawlerCompleteEvent += (_, _) => { Debug.Write("Crawl completed."); };
-        var options = new CrawlerOptions();
+        var options = new CrawlerOptions
+        {
+            SchedulerOptions = new SchedulerOptions
+            {
+                MaxQueueCount = 30
+            }
+        };
         var result = await _crawler.StartAsync(uri, options, CancellationToken.None);
 
-        var title = new[] { "Status", "Content", "Uri" };
-        var data = result.Pages.Select(x => new[] { $"{x.StatusCode}", $"{x.ContentType}", x.FinalUri.AbsoluteUri });
+        var title = new[] { "Level", "Status", "Content", "Uri" };
+        var data = result.Pages.OrderBy(x => x.FinalUri.AbsoluteUri).Select(x => new[] { $"{x.Level}", $"{x.StatusCode}", $"{x.ContentType}", x.FinalUri.AbsoluteUri });
         OutputTable(title, data);
     }
 }

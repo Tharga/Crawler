@@ -11,7 +11,7 @@ services.AddTransient<CrawlCommand>();
 services.RegisterCrawler();
 services.AddLogging(x =>
 {
-    x.AddConsole();
+    //x.AddConsole();
     x.SetMinimumLevel(LogLevel.Trace);
 });
 var serviceProvider = services.BuildServiceProvider();

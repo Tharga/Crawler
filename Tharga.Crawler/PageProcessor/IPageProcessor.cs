@@ -1,4 +1,6 @@
-﻿namespace Tharga.Crawler.Processor;
+﻿using Tharga.Crawler.Entity;
+
+namespace Tharga.Crawler.PageProcessor;
 
 public interface IPageProcessor
 {

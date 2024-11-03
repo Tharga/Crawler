@@ -1,4 +1,6 @@
-﻿namespace Tharga.Crawler;
+﻿using Tharga.Crawler.Entity;
+
+namespace Tharga.Crawler;
 
 public record CrawlerResult
 {

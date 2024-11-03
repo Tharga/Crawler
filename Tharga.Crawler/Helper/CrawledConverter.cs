@@ -1,4 +1,6 @@
-﻿namespace Tharga.Crawler.Helper;
+﻿using Tharga.Crawler.Entity;
+
+namespace Tharga.Crawler.Helper;
 
 internal static class CrawledConverter
 {
@@ -10,6 +12,9 @@ internal static class CrawledConverter
             StatusCode = crawlContent.StatusCode,
             Redirects = crawlContent.Redirects,
             ContentType = crawlContent.ContentType,
+            Parent = crawlContent.Parent,
+            RetryCount = crawlContent.RetryCount,
+            Message = crawlContent.Message,
         };
     }
 }

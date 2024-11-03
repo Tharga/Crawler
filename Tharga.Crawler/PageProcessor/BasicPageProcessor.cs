@@ -1,7 +1,7 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
+using Tharga.Crawler.Entity;
 using Tharga.Crawler.Helper;
-using Tharga.Crawler.Processor;
 
 namespace Tharga.Crawler.PageProcessor;
 
@@ -50,7 +50,9 @@ public class BasicPageProcessor : IPageProcessor
             {
                 yield return new ToCrawl
                 {
-                    RequestUri = UriHelper.TrimFragment(absoluteUri)
+                    RequestUri = UriHelper.TrimFragment(absoluteUri),
+                    Parent = page,
+                    RetryCount = 0
                 };
             }
         }

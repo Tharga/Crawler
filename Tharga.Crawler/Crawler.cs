@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Downloader;
+using Tharga.Crawler.Entity;
 using Tharga.Crawler.Helper;
-using Tharga.Crawler.Processor;
+using Tharga.Crawler.PageProcessor;
 using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler;
@@ -23,6 +25,7 @@ internal class Crawler : ICrawler
 
     public IScheduler Scheduler => _scheduler;
     public event EventHandler<CrawlerCompleteEventArgs> CrawlerCompleteEvent;
+    public event EventHandler<PageCompleteEventArgs> PageCompleteEvent;
 
     public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options, CancellationToken cancellationToken)
     {
@@ -30,7 +33,7 @@ internal class Crawler : ICrawler
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await _scheduler.Enqueue(new ToCrawl { RequestUri = uri });
+        await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
 
         //NOTE: Set a limitation in time to crawl
         if (options.MaxCrawlTime.HasValue)
@@ -64,13 +67,13 @@ internal class Crawler : ICrawler
         {
             var crawlerNo = i;
             crawlerStates.Crawlers.Add(crawlerNo, true);
-            tasks.Add(Task.Run(() => CrawlAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, cancellationToken), CancellationToken.None));
+            tasks.Add(Task.Run(() => CrawlAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, options, cancellationToken), CancellationToken.None));
         }
 
         await Task.WhenAll(tasks);
     }
 
-    async Task CrawlAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CancellationToken cancellationToken)
+    async Task CrawlAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CrawlerOptions options, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -90,15 +93,53 @@ internal class Crawler : ICrawler
                 {
                     crawlerStates.Crawlers[crawlerNo] = true;
 
-                    var result = await downloader.GetAsync(toCrawl, cancellationToken);
+                    var result = await downloader.GetAsync(toCrawl, options.DownloadOptions, cancellationToken);
                     if (result != null)
                     {
-                        await scheduler.AddAsync(result.ToCrawled());
-                        _logger.LogInformation("Crawler {crawlerNo} processed {uri}.", crawlerNo, result.RequestUri);
-                        await foreach (var item in pageProcessor.ProcessAsync(result).WithCancellation(cancellationToken))
+                        var responseCodeCategory = result.GetResponseCodeCategory();
+                        switch (responseCodeCategory)
                         {
-                            await scheduler.Enqueue(item);
+                            case ResponseCodeCategory.ServerError:
+                            {
+                                if ((options.DownloadOptions?.RetryCount ?? 0) < result.RetryCount)
+                                {
+                                    var crawl = new ToCrawl { RequestUri = result.RequestUri, RetryCount = result.RetryCount + 1, Parent = result.Parent };
+                                    _logger.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, crawl.RetryCount);
+                                    await _scheduler.EnqueueAsync(crawl, options.SchedulerOptions);
+                                }
+                                else
+                                {
+                                    await scheduler.AddAsync(result.ToCrawled());
+                                    PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                    _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                }
+
+                                break;
+                            }
+                            case ResponseCodeCategory.Redirection:
+                            case ResponseCodeCategory.Information:
+                            case ResponseCodeCategory.ClientError:
+                                await scheduler.AddAsync(result.ToCrawled());
+                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, result.StatusCode);
+                                break;
+                            case ResponseCodeCategory.Success:
+                                await scheduler.AddAsync(result.ToCrawled());
+                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                _logger.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
+                                await foreach (var item in pageProcessor.ProcessAsync(result).WithCancellation(cancellationToken))
+                                {
+                                    await scheduler.EnqueueAsync(item, options.SchedulerOptions);
+                                }
+
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
                         }
+                    }
+                    else
+                    {
+                        Debugger.Break();
                     }
                 }
             }
