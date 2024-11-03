@@ -1,0 +1,11 @@
+{
+  "Version": 3,
+  "ListAllProjects": false,
+  "MultiProjectConfigurations": {
+    "Sample Console": {
+      "Projects": {
+        "Tharga.Crawler.SampleConsole": {}
+      }
+    }
+  }
+}
