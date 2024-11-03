@@ -2,10 +2,10 @@
 
 public class CrawlerCompleteEventArgs : EventArgs
 {
-    public CrawlerCompleteEventArgs(bool isCancelled)
+    public CrawlerCompleteEventArgs(CrawlerResult crawlerResult)
     {
-        IsCancelled = isCancelled;
+        CrawlerResult = crawlerResult;
     }
 
-    public bool IsCancelled { get; }
+    public CrawlerResult CrawlerResult { get; }
 }

@@ -22,7 +22,7 @@ public class CrawlerTests
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
         scheduler.Setup(x => x.GetAllCrawled()).Returns(Array.Empty<Crawled>().ToAsyncEnumerable);
         scheduler.Setup(x => x.EnqueueAsync(It.IsAny<ToCrawl>(), It.IsAny<SchedulerOptions>())).Returns(Task.CompletedTask);
-        scheduler.Setup(x => x.TakeNextToCrawlAsync(It.IsAny<CancellationToken>())).ReturnsAsync((ToCrawl)null);
+        scheduler.Setup(x => x.GetQueuedItemScope(It.IsAny<CancellationToken>())).ReturnsAsync((ToCrawlScope)null);
         var pageProcessor = new Mock<IPageProcessor>(MockBehavior.Strict);
         var httpDownloader = new Mock<IDownloader>(MockBehavior.Strict);
         var logger = new Mock<ILogger<Crawler>>(MockBehavior.Loose);
@@ -32,6 +32,6 @@ public class CrawlerTests
         var result = await sut.StartAsync(new Uri("http://aaa.bbb.ccc"), options, CancellationToken.None);
 
         //Arrange
-        result.Pages.Should().BeEmpty();
+        result.RequestedPages.Should().BeEmpty();
     }
 }

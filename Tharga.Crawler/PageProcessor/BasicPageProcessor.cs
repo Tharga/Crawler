@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
+using System.Web;
 using Tharga.Crawler.Entity;
 using Tharga.Crawler.Helper;
 
@@ -45,7 +46,8 @@ public class BasicPageProcessor : IPageProcessor
 
         foreach (var link in htmlNodeCollection)
         {
-            var hrefValue = link.GetAttributeValue("href", string.Empty);
+            var hrefValueRaw = link.GetAttributeValue("href", string.Empty);
+            var hrefValue = HttpUtility.HtmlDecode(hrefValueRaw);
             if (!string.IsNullOrEmpty(hrefValue) && Uri.TryCreate(page.FinalUri, hrefValue, out var absoluteUri))
             {
                 yield return new ToCrawl

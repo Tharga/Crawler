@@ -7,7 +7,6 @@ public interface IScheduler
     event EventHandler<SchedulerEventArgs> SchedulerEvent;
 
     Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options);
-    Task<ToCrawl> TakeNextToCrawlAsync(CancellationToken cancellationToken); //TODO: Should return a scope that can be committed, abandoned, cancelled or set to retry.
-    Task AddAsync(Crawled result);
+    Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken);
     IAsyncEnumerable<Crawled> GetAllCrawled();
 }

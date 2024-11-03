@@ -49,13 +49,15 @@ internal class Crawler : ICrawler
 
         await RunCrawlers(_scheduler, _pageProcessor, _downloader, options, linkedTokenSource.Token);
 
-        CrawlerCompleteEvent?.Invoke(this, new CrawlerCompleteEventArgs(linkedTokenSource.IsCancellationRequested));
-
-        return new CrawlerResult
+        var crawlerResult = new CrawlerResult
         {
-            Pages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None),
+            RequestedPages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None),
             IsCancelled = linkedTokenSource.IsCancellationRequested,
         };
+
+        CrawlerCompleteEvent?.Invoke(this, new CrawlerCompleteEventArgs(crawlerResult));
+
+        return crawlerResult;
     }
 
     async Task RunCrawlers(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerOptions options, CancellationToken cancellationToken)
@@ -80,9 +82,9 @@ internal class Crawler : ICrawler
             try
             {
                 // Take the next URL to crawl from the scheduler.
-                var toCrawl = await scheduler.TakeNextToCrawlAsync(cancellationToken);
+                using var scope = await scheduler.GetQueuedItemScope(cancellationToken);
 
-                if (toCrawl == null)
+                if (scope == null)
                 {
                     crawlerStates.Crawlers[crawlerNo] = false;
                     _logger.LogTrace("Crawler no {crawlerNo} is waiting for more work. There are {workerCount} other workers still working.", crawlerNo, crawlerStates.Crawlers.Count(x => x.Value));
@@ -93,53 +95,51 @@ internal class Crawler : ICrawler
                 {
                     crawlerStates.Crawlers[crawlerNo] = true;
 
-                    var result = await downloader.GetAsync(toCrawl, options.DownloadOptions, cancellationToken);
-                    if (result != null)
+                    var result = await downloader.GetAsync(scope.ToCrawl, options.DownloadOptions, cancellationToken);
+                    if (result == null) throw new NullReferenceException($"Downloader did not return anything for '{scope.ToCrawl.RequestUri.AbsoluteUri}'.");
+
+                    var responseCodeCategory = result.GetResponseCodeCategory();
+                    switch (responseCodeCategory)
                     {
-                        var responseCodeCategory = result.GetResponseCodeCategory();
-                        switch (responseCodeCategory)
+                        case ResponseCodeCategory.ServerError:
                         {
-                            case ResponseCodeCategory.ServerError:
+                            if ((options.DownloadOptions?.RetryCount ?? 0) < result.RetryCount)
                             {
-                                if ((options.DownloadOptions?.RetryCount ?? 0) < result.RetryCount)
-                                {
-                                    var crawl = new ToCrawl { RequestUri = result.RequestUri, RetryCount = result.RetryCount + 1, Parent = result.Parent };
-                                    _logger.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, crawl.RetryCount);
-                                    await _scheduler.EnqueueAsync(crawl, options.SchedulerOptions);
-                                }
-                                else
-                                {
-                                    await scheduler.AddAsync(result.ToCrawled());
-                                    PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                                    _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
-                                }
-
-                                break;
+                                //var crawl = new ToCrawl { RequestUri = result.RequestUri, RetryCount = result.RetryCount + 1, Parent = result.Parent };
+                                //_logger.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, crawl.RetryCount);
+                                //await _scheduler.EnqueueAsync(crawl, options.SchedulerOptions);
+                                Debugger.Break();
+                                throw new InvalidOperationException("Retry docment has not yet been implemented.");
                             }
-                            case ResponseCodeCategory.Redirection:
-                            case ResponseCodeCategory.Information:
-                            case ResponseCodeCategory.ClientError:
-                                await scheduler.AddAsync(result.ToCrawled());
-                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                                _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, result.StatusCode);
-                                break;
-                            case ResponseCodeCategory.Success:
-                                await scheduler.AddAsync(result.ToCrawled());
-                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                                _logger.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
-                                await foreach (var item in pageProcessor.ProcessAsync(result).WithCancellation(cancellationToken))
-                                {
-                                    await scheduler.EnqueueAsync(item, options.SchedulerOptions);
-                                }
+                            else
+                            {
+                                //await scheduler.AddAsync(result.ToCrawled());
+                                //PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                //_logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                Debugger.Break();
+                                throw new InvalidOperationException("Retry docment depleted has not yet been implemented.");
+                            }
 
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
+                            break;
                         }
-                    }
-                    else
-                    {
-                        Debugger.Break();
+                        case ResponseCodeCategory.Redirection:
+                        case ResponseCodeCategory.Information:
+                        case ResponseCodeCategory.ClientError:
+                            _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, result.StatusCode);
+                            scope.Commit(result);
+                            break;
+                        case ResponseCodeCategory.Success:
+                            _logger.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
+                            PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                            await foreach (var item in pageProcessor.ProcessAsync(result).WithCancellation(cancellationToken))
+                            {
+                                await scheduler.EnqueueAsync(item, options.SchedulerOptions);
+                            }
+                            scope.Commit(result);
+
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
                     }
                 }
             }

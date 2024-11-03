@@ -4,6 +4,6 @@ namespace Tharga.Crawler;
 
 public record CrawlerResult
 {
-    public required Crawled[] Pages { get; init; }
+    internal Crawled[] RequestedPages { get; init; }
     public required bool IsCancelled { get; init; }
 }

@@ -1,18 +1,14 @@
 ﻿using System.Collections.Concurrent;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Entity;
-using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
 
-public class MemoryScheduler : IScheduler
+internal class MemoryScheduler : IScheduler
 {
+    private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<MemoryScheduler> _logger;
-    private readonly ConcurrentDictionary<Uri, ToCrawl> _queue = new();
-    private readonly ConcurrentDictionary<Uri, ToCrawl> _crawling = new();
-    private readonly ConcurrentDictionary<Uri, Crawled> _crawled = new();
-    private readonly ConcurrentDictionary<Uri, Crawled> _blocked = new();
+    private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
 
     public MemoryScheduler(ILogger<MemoryScheduler> logger)
     {
@@ -23,76 +19,52 @@ public class MemoryScheduler : IScheduler
 
     public Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
     {
-        if (options?.MaxQueueCount != null)
+        if (_schedule.Count >= options?.MaxQueueCount)
         {
-            var crawlingCount = _queue.Count + _crawling.Count + _crawled.Count;
-            if (crawlingCount >= options?.MaxQueueCount)
-            {
-                _logger.LogWarning("Queue has {queueCount} items and is full.", crawlingCount);
-                return Task.CompletedTask;
-            }
+            _logger.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
+            return Task.CompletedTask;
         }
 
-        if (_crawled.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
-        if (_crawling.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
-        if (_blocked.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
+        var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
+        if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
+        {
+            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+        }
 
-        _queue.TryAdd(toCrawl.RequestUri, toCrawl);
-        SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
         return Task.CompletedTask;
     }
 
-    public Task<ToCrawl> TakeNextToCrawlAsync(CancellationToken cancellationToken)
+    public async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
     {
-        var toTake = _queue.FirstOrDefault();
-        if (toTake.Key == null) return Task.FromResult<ToCrawl>(null);
-        if (_queue.TryRemove(toTake.Key, out var item))
+        try
         {
-            if (!_crawling.TryAdd(item.RequestUri, item))
+            await _lock.WaitAsync(cancellationToken);
+
+            var item = _schedule.Values.FirstOrDefault(x => x.State == ScheduleItemState.Queued);
+            if (item == null) return null;
+
+            var scheduleToQueue = item with { State = ScheduleItemState.Crawling };
+            var queueUpdate = _schedule.TryUpdate(item.ToCrawl.RequestUri, scheduleToQueue, item);
+            if (!queueUpdate) throw new InvalidOperationException("Unable to update queue item.");
+
+            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Crawl, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+
+            return new ToCrawlScope(item.ToCrawl, e =>
             {
-                _logger.LogWarning("Another thread already took this one, take another.");
-                Debugger.Break();
-            }
-            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
-            return Task.FromResult(item);
+                var scheduleComplete = new ScheduleItem { ToCrawl = e, State = ScheduleItemState.Complete };
+                var completeUpdate = _schedule.TryUpdate(item.ToCrawl.RequestUri, scheduleComplete, scheduleToQueue);
+                if (!completeUpdate) throw new InvalidOperationException("Unable to update completed item.");
+                SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Complete, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+            });
         }
-        return Task.FromResult<ToCrawl>(null);
-    }
-
-    public Task AddAsync(Crawled result)
-    {
-        if (result is CrawlContent) throw new InvalidOperationException($"Adding result of type '{nameof(CrawlContent)}' is not allowed since it will take too much memory. Use the '{nameof(CrawledConverter.ToCrawled)}' method to convert.");
-
-        if (result.FinalUri != result.RequestUri)
+        finally
         {
-            _blocked.TryAdd(result.RequestUri, result);
+            _lock.Release();
         }
-
-        if (_crawled.TryAdd(result.FinalUri, result))
-        {
-            //_logger.LogInformation($"Completed {result.FinalUri.AbsoluteUri}.");
-            if (_queue.TryRemove(result.FinalUri, out _))
-            {
-                //Another crawler added an url that is now completed, and it has been removed.
-            }
-        }
-        else
-        {
-            //TODO: Try to fix this issue
-            _logger.LogWarning("Already completed '{uri}'.", result.FinalUri.AbsoluteUri);
-        }
-
-        if (!_crawling.TryRemove(result.RequestUri, out _))
-        {
-        }
-
-        SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));
-
-        return Task.CompletedTask;
     }
 
     public IAsyncEnumerable<Crawled> GetAllCrawled()
     {
-        return _crawled.Values.ToAsyncEnumerable();
+        return _schedule.Values.Where(x => x.State == ScheduleItemState.Complete).Select(x => x.ToCrawl as Crawled).ToAsyncEnumerable();
     }
 }

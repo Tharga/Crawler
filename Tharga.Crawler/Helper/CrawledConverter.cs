@@ -4,7 +4,7 @@ namespace Tharga.Crawler.Helper;
 
 internal static class CrawledConverter
 {
-    public static Crawled ToCrawled(this CrawlContent crawlContent)
+    public static Crawled RemoveContent(this CrawlContent crawlContent)
     {
         return new Crawled
         {

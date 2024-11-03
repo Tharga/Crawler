@@ -51,7 +51,6 @@ public class HttpClientDownloader : IDownloader
         {
             _logger.LogError(e, e.Message);
 
-            Debugger.Break(); //TODO: Consider retry
             return new CrawlContent
             {
                 RequestUri = toCrawl.RequestUri,
