@@ -18,7 +18,7 @@ public class BasicPageProcessor : IPageProcessor
     {
         await foreach (var link in GetLinks(page))
         {
-            if (!page.RequestUri.HaveSameRootDomain(link.RequestUri))
+            if (!page.RequestUri.HaveSameRootDomain(link.RequestUri) || !page.FinalUri.HaveSameRootDomain(link.RequestUri))
             {
                 _logger.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
             }

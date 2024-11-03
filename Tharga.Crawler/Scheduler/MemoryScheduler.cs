@@ -11,6 +11,7 @@ public class MemoryScheduler : IScheduler
     private readonly ConcurrentDictionary<Uri, ToCrawl> _queue = new();
     private readonly ConcurrentDictionary<Uri, ToCrawl> _crawling = new();
     private readonly ConcurrentDictionary<Uri, Crawled> _crawled = new();
+    private readonly ConcurrentDictionary<Uri, Crawled> _blocked = new();
 
     public MemoryScheduler(ILogger<MemoryScheduler> logger)
     {
@@ -42,10 +43,7 @@ public class MemoryScheduler : IScheduler
 
         if (result.FinalUri != result.RequestUri)
         {
-            //TODO: Assure that the final and request uri belongs to the same root-domain.
-            //TODO: Add to a block-list so that the request domain is not crawled again.
-            Debugger.Break();
-            throw new NotImplementedException();
+            _blocked.TryAdd(result.RequestUri, result);
         }
 
         if (_crawled.TryAdd(result.FinalUri, result))
@@ -75,6 +73,7 @@ public class MemoryScheduler : IScheduler
     {
         if (_crawled.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
         if (_crawling.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
+        if (_blocked.ContainsKey(toCrawl.RequestUri)) return Task.CompletedTask;
 
         _queue.TryAdd(toCrawl.RequestUri, toCrawl);
         SchedulerEvent?.Invoke(this, new SchedulerEventArgs(_queue.Count, _crawling.Count, _crawled.Count));

@@ -1,4 +1,5 @@
-﻿using Tharga.Console.Commands.Base;
+﻿using System.Diagnostics;
+using Tharga.Console.Commands.Base;
 
 namespace Tharga.Crawler.SampleConsole.Commands;
 
@@ -16,8 +17,9 @@ internal class CrawlCommand : AsyncActionCommandBase
     {
         var uri = QueryParam("Url", param, [new Uri("https://eplicta.se/")]);
 
-        _crawler.Scheduler.SchedulerEvent += (s, e) => { OutputInformation($"Q: {e.QueueCount}, C: {e.CrawlingCount}, H: {e.CrawledCount}"); };
+        _crawler.Scheduler.SchedulerEvent += (_, e) => { OutputInformation($"Q: {e.QueueCount}, C: {e.CrawlingCount}, H: {e.CrawledCount}"); };
 
+        _crawler.CrawlerCompleteEvent += (_, _) => { Debug.Write("Crawl completed."); };
         var options = new CrawlerOptions();
         var result = await _crawler.StartAsync(uri, options, CancellationToken.None);
 
