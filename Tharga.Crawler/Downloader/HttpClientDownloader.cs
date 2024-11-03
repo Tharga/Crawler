@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Net;
+﻿using System.Net;
 using System.Net.Mime;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Entity;
@@ -26,9 +25,16 @@ public class HttpClientDownloader : IDownloader
         (HttpResponseMessage Response, Uri[] Redirects) result = default;
         try
         {
-            using var client = new HttpClient(handler);
-            client.Timeout = downloadOptions?.Timeout ?? TimeSpan.FromSeconds(100);
-            result = await GetWithRedirectsAsync(client, toCrawl.RequestUri, cancellationToken);
+            using var httpClient = new HttpClient(handler);
+            if (!string.IsNullOrEmpty(downloadOptions?.UserAgent))
+            {
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(downloadOptions.UserAgent);
+                httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.5");
+                httpClient.DefaultRequestHeaders.Referrer = new Uri("https://www.google.com");
+            }
+            httpClient.Timeout = downloadOptions?.Timeout ?? TimeSpan.FromSeconds(100);
+            result = await GetWithRedirectsAsync(httpClient, toCrawl.RequestUri, cancellationToken);
             var content = await result.Response.Content.ReadAsByteArrayAsync(cancellationToken);
 
             return new CrawlContent

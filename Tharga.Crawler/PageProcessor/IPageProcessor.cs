@@ -4,5 +4,5 @@ namespace Tharga.Crawler.PageProcessor;
 
 public interface IPageProcessor
 {
-    IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page);
+    IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page, CrawlerOptions options, CancellationToken cancellationToken);
 }

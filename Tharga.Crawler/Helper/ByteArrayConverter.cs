@@ -1,11 +1,17 @@
 ﻿using System.Net.Mime;
 using System.Text;
+using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Helper;
 
-internal static class ByteArrayConverter
+public static class ByteArrayConverter
 {
-    public static string ConvertByteArrayToString(this byte[] data, ContentType contentType)
+    public static string ToStringContent(this CrawlContent page)
+    {
+        return page.Content.ToStringContent(page.ContentType);
+    }
+
+    public static string ToStringContent(this byte[] data, ContentType contentType)
     {
         if (data == null || data.Length == 0)
             return string.Empty;

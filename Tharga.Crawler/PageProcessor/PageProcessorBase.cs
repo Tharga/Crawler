@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using System.Runtime.CompilerServices;
+using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
 using System.Web;
 using Tharga.Crawler.Entity;
@@ -6,18 +7,19 @@ using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.PageProcessor;
 
-public class BasicPageProcessor : IPageProcessor
+public class PageProcessorBase : IPageProcessor
 {
-    private readonly ILogger<BasicPageProcessor> _logger;
+    private readonly ILogger<PageProcessorBase> _logger;
 
-    public BasicPageProcessor(ILogger<BasicPageProcessor> logger)
+    public PageProcessorBase(ILogger<PageProcessorBase> logger)
     {
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page)
+    public virtual async IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page, CrawlerOptions options, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var link in GetLinks(page))
+        var count = 0;
+        await foreach (var link in GetLinks(page).Distinct())
         {
             if (!page.RequestUri.HaveSameRootDomain(link.RequestUri) || !page.FinalUri.HaveSameRootDomain(link.RequestUri))
             {
@@ -29,14 +31,17 @@ public class BasicPageProcessor : IPageProcessor
             }
             else
             {
+                count++;
                 yield return link;
             }
         }
+
+        _logger.LogInformation("Found {linkCount} on page {uri}.", count, page.FinalUri);
     }
 
     private async IAsyncEnumerable<ToCrawl> GetLinks(CrawlContent page)
     {
-        var htmlContent = page.Content.ConvertByteArrayToString(page.ContentType);
+        var htmlContent = page.Content.ToStringContent(page.ContentType);
 
         var htmlDoc = new HtmlDocument();
         htmlDoc.LoadHtml(htmlContent);

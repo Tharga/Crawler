@@ -1,4 +1,5 @@
 ﻿using Tharga.Console.Commands.Base;
+using Tharga.Crawler.Downloader;
 using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler.SampleConsole.Commands;
@@ -15,7 +16,7 @@ internal class CrawlCommand : AsyncActionCommandBase
 
     public override async Task InvokeAsync(string[] param)
     {
-        var uri = QueryParam("Url", param, [new Uri("https://eplicta.se/")]);
+        var uri = QueryParam("Url", param, [new Uri("https://eplicta.se/"), new Uri("https://seafun.se/")]);
 
         _crawler.Scheduler.SchedulerEvent += (_, e) => { OutputInformation($"Q: {e.QueueCount}, C: {e.CrawlingCount}, H: {e.CrawledCount}, A: {e.Action}"); };
         //_crawler.CrawlerCompleteEvent += (_, e) => { OutputInformation("Crawl completed."); };
@@ -25,7 +26,11 @@ internal class CrawlCommand : AsyncActionCommandBase
         {
             SchedulerOptions = new SchedulerOptions
             {
-                //MaxQueueCount = 20
+                //MaxQueueCount = 1
+            },
+            DownloadOptions = new DownloadOptions
+            {
+                //UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0"
             }
         };
         var result = await _crawler.StartAsync(uri, options, CancellationToken.None);

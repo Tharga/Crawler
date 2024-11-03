@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Net;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Downloader;
 using Tharga.Crawler.Entity;
@@ -125,13 +126,13 @@ internal class Crawler : ICrawler
                         case ResponseCodeCategory.Redirection:
                         case ResponseCodeCategory.Information:
                         case ResponseCodeCategory.ClientError:
-                            _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, result.StatusCode);
+                            _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
                             scope.Commit(result);
                             break;
                         case ResponseCodeCategory.Success:
                             _logger.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
                             PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                            await foreach (var item in pageProcessor.ProcessAsync(result).WithCancellation(cancellationToken))
+                            await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
                             {
                                 await scheduler.EnqueueAsync(item, options.SchedulerOptions);
                             }
