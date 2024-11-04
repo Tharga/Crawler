@@ -15,6 +15,8 @@ internal static class CrawledConverter
             Parent = crawlContent.Parent,
             RetryCount = crawlContent.RetryCount,
             Message = crawlContent.Message,
+            DownloadTime = crawlContent.DownloadTime,
+            Title = crawlContent.Title
         };
     }
 }

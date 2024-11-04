@@ -10,7 +10,7 @@ internal class MemoryScheduler : IScheduler
     private readonly ILogger<MemoryScheduler> _logger;
     private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
 
-    public MemoryScheduler(ILogger<MemoryScheduler> logger)
+    public MemoryScheduler(ILogger<MemoryScheduler> logger = default)
     {
         _logger = logger;
     }
@@ -21,7 +21,7 @@ internal class MemoryScheduler : IScheduler
     {
         if (_schedule.Count >= options?.MaxQueueCount)
         {
-            _logger.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
+            _logger?.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
             return Task.CompletedTask;
         }
 
@@ -40,7 +40,10 @@ internal class MemoryScheduler : IScheduler
         {
             await _lock.WaitAsync(cancellationToken);
 
-            var item = _schedule.Values.FirstOrDefault(x => x.State == ScheduleItemState.Queued);
+            var item = _schedule.Values
+                .OrderBy(x => x.ToCrawl.RetryCount)
+                .ThenBy(x => x.ToCrawl.Level) //Shallow crawl
+                .FirstOrDefault(x => x.State == ScheduleItemState.Queued);
             if (item == null) return null;
 
             var scheduleToQueue = item with { State = ScheduleItemState.Crawling };
@@ -49,9 +52,9 @@ internal class MemoryScheduler : IScheduler
 
             SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Crawl, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
 
-            return new ToCrawlScope(item.ToCrawl, e =>
+            return new ToCrawlScope(item.ToCrawl, (toCrawl, state) =>
             {
-                var scheduleComplete = new ScheduleItem { ToCrawl = e, State = ScheduleItemState.Complete };
+                var scheduleComplete = new ScheduleItem { ToCrawl = toCrawl, State = state };
                 var completeUpdate = _schedule.TryUpdate(item.ToCrawl.RequestUri, scheduleComplete, scheduleToQueue);
                 if (!completeUpdate) throw new InvalidOperationException("Unable to update completed item.");
                 SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Complete, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));

@@ -16,7 +16,7 @@ internal class Crawler : ICrawler
     private readonly IDownloader _downloader;
     private readonly ILogger<Crawler> _logger;
 
-    public Crawler(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, ILogger<Crawler> logger)
+    public Crawler(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, ILogger<Crawler> logger = default)
     {
         _scheduler = scheduler;
         _pageProcessor = pageProcessor;
@@ -43,7 +43,7 @@ internal class Crawler : ICrawler
             _ = Task.Run(async () =>
             {
                 await Task.Delay(options.MaxCrawlTime.Value, cts.Token);
-                _logger.LogInformation("Crawl timeout reached after {timeoutMilliseconds} ms.", options.MaxCrawlTime.Value.TotalMicroseconds);
+                _logger?.LogInformation("Crawl timeout reached after {timeoutMilliseconds} ms.", options.MaxCrawlTime.Value.TotalMicroseconds);
                 await cts.CancelAsync();
             }, linkedTokenSource.Token);
         }
@@ -88,7 +88,7 @@ internal class Crawler : ICrawler
                 if (scope == null)
                 {
                     crawlerStates.Crawlers[crawlerNo] = false;
-                    _logger.LogTrace("Crawler no {crawlerNo} is waiting for more work. There are {workerCount} other workers still working.", crawlerNo, crawlerStates.Crawlers.Count(x => x.Value));
+                    _logger?.LogTrace("Crawler no {crawlerNo} is waiting for more work. There are {workerCount} other workers still working.", crawlerNo, crawlerStates.Crawlers.Count(x => x.Value));
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
                     if (crawlerStates.Crawlers.Count(x => x.Value) == 0) return; //No workers are working, end the crawl
                 }
@@ -104,21 +104,15 @@ internal class Crawler : ICrawler
                     {
                         case ResponseCodeCategory.ServerError:
                         {
-                            if ((options.DownloadOptions?.RetryCount ?? 0) < result.RetryCount)
+                            if (result.RetryCount < (options.DownloadOptions?.RetryCount ?? 0))
                             {
-                                //var crawl = new ToCrawl { RequestUri = result.RequestUri, RetryCount = result.RetryCount + 1, Parent = result.Parent };
-                                //_logger.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, crawl.RetryCount);
-                                //await _scheduler.EnqueueAsync(crawl, options.SchedulerOptions);
-                                Debugger.Break();
-                                throw new InvalidOperationException("Retry docment has not yet been implemented.");
+                                _logger?.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, scope.ToCrawl.RetryCount);
+                                scope.Retry();
                             }
                             else
                             {
-                                //await scheduler.AddAsync(result.ToCrawled());
-                                //PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                                //_logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
-                                Debugger.Break();
-                                throw new InvalidOperationException("Retry docment depleted has not yet been implemented.");
+                                _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                scope.Commit(result);
                             }
 
                             break;
@@ -126,11 +120,11 @@ internal class Crawler : ICrawler
                         case ResponseCodeCategory.Redirection:
                         case ResponseCodeCategory.Information:
                         case ResponseCodeCategory.ClientError:
-                            _logger.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
+                            _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
                             scope.Commit(result);
                             break;
                         case ResponseCodeCategory.Success:
-                            _logger.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
+                            _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
                             PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
                             await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
                             {

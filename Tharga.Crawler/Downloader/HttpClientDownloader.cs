@@ -1,7 +1,11 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Mime;
+using System.Web;
+using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Entity;
+using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Downloader;
 
@@ -9,7 +13,7 @@ public class HttpClientDownloader : IDownloader
 {
     private readonly ILogger<HttpClientDownloader> _logger;
 
-    public HttpClientDownloader(ILogger<HttpClientDownloader> logger)
+    public HttpClientDownloader(ILogger<HttpClientDownloader> logger = default)
     {
         _logger = logger;
     }
@@ -23,30 +27,41 @@ public class HttpClientDownloader : IDownloader
         };
 
         (HttpResponseMessage Response, Uri[] Redirects) result = default;
+        var sw = new Stopwatch();
         try
         {
             using var httpClient = new HttpClient(handler);
             if (!string.IsNullOrEmpty(downloadOptions?.UserAgent))
             {
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(downloadOptions.UserAgent);
-                httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.5");
-                httpClient.DefaultRequestHeaders.Referrer = new Uri("https://www.google.com");
+                //httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                //httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.5");
+                //httpClient.DefaultRequestHeaders.Referrer = new Uri("https://www.google.com");
             }
             httpClient.Timeout = downloadOptions?.Timeout ?? TimeSpan.FromSeconds(100);
+
+            sw.Start();
+
             result = await GetWithRedirectsAsync(httpClient, toCrawl.RequestUri, cancellationToken);
             var content = await result.Response.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            sw.Stop();
+
+            var contentType = new ContentType(result.Response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream");
+            var title = GetTitle(content, contentType);
 
             return new CrawlContent
             {
                 RequestUri = toCrawl.RequestUri,
                 StatusCode = (int)result.Response.StatusCode,
                 Redirects = result.Redirects,
-                ContentType = new ContentType(result.Response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream"),
+                ContentType = contentType,
                 Content = content,
                 Parent = toCrawl.Parent,
                 RetryCount = toCrawl.RetryCount,
-                Message = null
+                Message = null,
+                DownloadTime = sw.Elapsed,
+                Title = title
             };
         }
         catch (TaskCanceledException)
@@ -55,7 +70,7 @@ public class HttpClientDownloader : IDownloader
         }
         catch (Exception e)
         {
-            _logger.LogError(e, e.Message);
+            _logger?.LogError(e, e.Message);
 
             return new CrawlContent
             {
@@ -64,15 +79,27 @@ public class HttpClientDownloader : IDownloader
                 Redirects = result.Redirects ?? [],
                 ContentType = null,
                 Content = null,
-                Message = e.Message,
                 Parent = toCrawl.Parent,
-                RetryCount = toCrawl.RetryCount
+                RetryCount = toCrawl.RetryCount,
+                Message = e.Message,
+                DownloadTime = sw.Elapsed,
+                Title = null
             };
         }
         finally
         {
             result.Response?.Dispose();
         }
+    }
+
+    private static string GetTitle(byte[] content, ContentType contentType)
+    {
+        var htmlContent = content.ToStringContent(contentType);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(htmlContent);
+        var titleNode = htmlDoc.DocumentNode.SelectSingleNode("//head/title");
+        var title = HttpUtility.HtmlDecode(titleNode?.InnerText.Trim());
+        return title;
     }
 
     private async Task<(HttpResponseMessage Response, Uri[] Redirects)> GetWithRedirectsAsync(HttpClient httpClient, Uri url, CancellationToken cancellationToken)

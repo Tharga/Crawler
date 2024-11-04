@@ -12,7 +12,7 @@ public record Crawled : ToCrawl
     public required Uri[] Redirects { get; init; }
     public Uri FinalUri => Redirects?.LastOrDefault() ?? RequestUri;
     public required ContentType ContentType { get; init; }
-    //public TimeSpan? DownloadTime { get; init; } //TODO: Implement
-    //public string Title { get; init; } //TODO: Implement
-    public string Message { get; init; }
+    public required TimeSpan? DownloadTime { get; init; }
+    public required string Title { get; init; }
+    public required string Message { get; init; }
 }

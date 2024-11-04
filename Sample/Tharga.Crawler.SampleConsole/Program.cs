@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Tharga.Console;
 using Tharga.Console.Commands;
 using Tharga.Console.Consoles;
@@ -9,11 +8,11 @@ using Tharga.Crawler.SampleConsole.Commands;
 var services = new ServiceCollection();
 services.AddTransient<CrawlCommand>();
 services.RegisterCrawler();
-services.AddLogging(x =>
-{
-    //x.AddConsole();
-    x.SetMinimumLevel(LogLevel.Trace);
-});
+//services.AddLogging(x =>
+//{
+//    x.AddConsole();
+//    x.SetMinimumLevel(LogLevel.Trace);
+//});
 var serviceProvider = services.BuildServiceProvider();
 
 using var console = new ClientConsole();

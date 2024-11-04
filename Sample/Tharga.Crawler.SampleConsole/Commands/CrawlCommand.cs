@@ -24,25 +24,26 @@ internal class CrawlCommand : AsyncActionCommandBase
 
         var options = new CrawlerOptions
         {
+            NumberOfCrawlers = 20,
             SchedulerOptions = new SchedulerOptions
             {
-                //MaxQueueCount = 1
+                MaxQueueCount = 30
             },
             DownloadOptions = new DownloadOptions
             {
-                //UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0"
+                UserAgent = UserAgentLibrary.Chrome
             }
         };
         var result = await _crawler.StartAsync(uri, options, CancellationToken.None);
 
-        var title = new[] { "Level", "Status", "Content", "Redirects", "Final" };
+        var title = new[] { "Lvl", "Status", "R", "Content", "Redirects", "Title", "Uri" };
 
         OutputInformation("Requested");
-        var requested = result.GetRequestedPages().OrderBy(x => x.FinalUri.AbsoluteUri).Select(x => new[] { $"{x.Level}", $"{x.StatusCode}", $"{x.ContentType}", $"{x.Redirects.Length}", x.RequestUri.AbsoluteUri });
+        var requested = result.GetRequestedPages().OrderBy(x => x.RequestUri.AbsoluteUri).Select(x => new[] { $"{x.Level}", $"{x.StatusCode}", $"{x.RetryCount}", $"{x.ContentType}", $"{x.Redirects.Length}", x.Title, x.RequestUri.AbsoluteUri });
         OutputTable(title, requested);
 
         OutputInformation("Final");
-        var final = result.GetFinalPages().OrderBy(x => x.FinalUri.AbsoluteUri).Select(x => new[] { $"{x.Level}", $"{x.StatusCode}", $"{x.ContentType}", $"{x.Redirects.Length}", x.FinalUri.AbsoluteUri });
+        var final = result.GetFinalPages().OrderBy(x => x.FinalUri.AbsoluteUri).Select(x => new[] { $"{x.Level}", $"{x.StatusCode}", $"{x.RetryCount}", $"{x.ContentType}", $"{x.Redirects.Length}", x.Title, x.FinalUri.AbsoluteUri });
         OutputTable(title, final);
     }
 }

@@ -19,15 +19,15 @@ public class PageProcessorBase : IPageProcessor
     public virtual async IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page, CrawlerOptions options, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var count = 0;
-        await foreach (var link in GetLinks(page).Distinct())
+        await foreach (var link in GetLinks(page).Distinct().WithCancellation(cancellationToken))
         {
             if (!page.RequestUri.HaveSameRootDomain(link.RequestUri) || !page.FinalUri.HaveSameRootDomain(link.RequestUri))
             {
-                _logger.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
+                _logger?.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
             }
             else if (!link.RequestUri.Scheme.StartsWith("http"))
             {
-                _logger.LogTrace("Skipping {uri} because not scheme http or https.", link.RequestUri);
+                _logger?.LogTrace("Skipping {uri} because not scheme http or https.", link.RequestUri);
             }
             else
             {
@@ -36,7 +36,7 @@ public class PageProcessorBase : IPageProcessor
             }
         }
 
-        _logger.LogInformation("Found {linkCount} on page {uri}.", count, page.FinalUri);
+        _logger?.LogInformation("Found {linkCount} on page {uri}.", count, page.FinalUri);
     }
 
     private async IAsyncEnumerable<ToCrawl> GetLinks(CrawlContent page)
