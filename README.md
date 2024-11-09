@@ -53,7 +53,7 @@ var crawler = new Crawler();
 var options = new CrawlerOptions
 {
     MaxCrawlTime = TimeSpan.FromMinutes(10),    //Limit the total crawl time to 10 minutes.
-    NumberOfCrawlers = 5,                       //Run 5 parallel crawlers. (Default is 3)
+    NumberOfProcessors = 5,                     //Run 5 parallel processors. (Default is 3)
     DownloadOptions = new DownloadOptions
     {
         RetryCount = 3,                         //If a download fails with 5xx, retry 3 times. (Default is 3)
@@ -71,6 +71,8 @@ var result = await crawler.StartAsync(new Uri("https://thargelion.se/"), options
 ## Engine Components
 There are four main components. The `Crawler` handles the overall process of the crawl.
 It uses the `IDownloader` to download pages, the `IScheduler` to handle the queue and the result of pages and the `IPageProcessor` to handle the finding of links and crawling rules.
+
+![Process Diagram](Resources/Tharga.Crawler.Process.svg)
 
 ## Customize behaviour
 This version is not yet fully customizable.

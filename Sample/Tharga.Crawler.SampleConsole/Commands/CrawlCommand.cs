@@ -31,7 +31,7 @@ internal class CrawlCommand : AsyncActionCommandBase
 
         var options = new CrawlerOptions
         {
-            NumberOfCrawlers = 20,
+            NumberOfProcessors = 20,
             SchedulerOptions = new SchedulerOptions
             {
                 MaxQueueCount = 30

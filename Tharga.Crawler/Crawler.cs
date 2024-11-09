@@ -30,7 +30,7 @@ public class Crawler : ICrawler
     public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default)
     {
         options ??= new CrawlerOptions();
-        if (options.NumberOfCrawlers <= 0) throw new InvalidOperationException("Need at least one crawler.");
+        if (options.NumberOfProcessors <= 0) throw new InvalidOperationException("Need at least one crawler.");
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -48,7 +48,7 @@ public class Crawler : ICrawler
             }, linkedTokenSource.Token);
         }
 
-        await RunCrawlers(_scheduler, _pageProcessor, _downloader, options, linkedTokenSource.Token);
+        await RunProcessorsAsync(_scheduler, _pageProcessor, _downloader, options, linkedTokenSource.Token);
 
         var crawlerResult = new CrawlerResult
         {
@@ -61,22 +61,22 @@ public class Crawler : ICrawler
         return crawlerResult;
     }
 
-    async Task RunCrawlers(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerOptions options, CancellationToken cancellationToken)
+    async Task RunProcessorsAsync(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerOptions options, CancellationToken cancellationToken)
     {
         var crawlerStates = new CrawlerStates();
 
-        var tasks = new List<Task>();
-        for (var i = 0; i < options.NumberOfCrawlers; i++)
+        var processorTasks = new List<Task>();
+        for (var i = 0; i < options.NumberOfProcessors; i++)
         {
             var crawlerNo = i;
             crawlerStates.Crawlers.Add(crawlerNo, true);
-            tasks.Add(Task.Run(() => CrawlAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, options, cancellationToken), CancellationToken.None));
+            processorTasks.Add(Task.Run(() => RunProcessorAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, options, cancellationToken), CancellationToken.None));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(processorTasks);
     }
 
-    async Task CrawlAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CrawlerOptions options, CancellationToken cancellationToken)
+    async Task RunProcessorAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CrawlerOptions options, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
