@@ -11,23 +11,29 @@ public class PageProcessorBase : IPageProcessor
 {
     private readonly ILogger<PageProcessorBase> _logger;
 
-    public PageProcessorBase(ILogger<PageProcessorBase> logger)
+    public PageProcessorBase(ILogger<PageProcessorBase> logger = default)
     {
         _logger = logger;
     }
 
     public virtual async IAsyncEnumerable<ToCrawl> ProcessAsync(CrawlContent page, CrawlerOptions options, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (!page.RequestUri.HaveSameRootDomain(page.FinalUri))
+        {
+            _logger?.LogTrace("Skipping link search on {uri} because it was redirected to the domain {domain}.", page.RequestUri, page.FinalUri.GetRootDomain());
+            yield break;
+        }
+
         var count = 0;
         await foreach (var link in GetLinks(page).Distinct().WithCancellation(cancellationToken))
         {
-            if (!page.RequestUri.HaveSameRootDomain(link.RequestUri) || !page.FinalUri.HaveSameRootDomain(link.RequestUri))
-            {
-                _logger?.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
-            }
-            else if (!link.RequestUri.Scheme.StartsWith("http"))
+            if (!link.RequestUri.Scheme.StartsWith("http"))
             {
                 _logger?.LogTrace("Skipping {uri} because not scheme http or https.", link.RequestUri);
+            }
+            else if (!page.RequestUri.HaveSameRootDomain(link.RequestUri))
+            {
+                _logger?.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
             }
             else
             {

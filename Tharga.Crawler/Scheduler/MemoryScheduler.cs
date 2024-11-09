@@ -4,7 +4,7 @@ using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Scheduler;
 
-internal class MemoryScheduler : IScheduler
+public class MemoryScheduler : IScheduler
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<MemoryScheduler> _logger;
@@ -17,7 +17,7 @@ internal class MemoryScheduler : IScheduler
 
     public event EventHandler<SchedulerEventArgs> SchedulerEvent;
 
-    public Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
+    public virtual Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
     {
         if (_schedule.Count >= options?.MaxQueueCount)
         {
@@ -34,7 +34,7 @@ internal class MemoryScheduler : IScheduler
         return Task.CompletedTask;
     }
 
-    public async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
+    public virtual async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
     {
         try
         {
@@ -66,7 +66,7 @@ internal class MemoryScheduler : IScheduler
         }
     }
 
-    public IAsyncEnumerable<Crawled> GetAllCrawled()
+    public virtual IAsyncEnumerable<Crawled> GetAllCrawled()
     {
         return _schedule.Values.Where(x => x.State == ScheduleItemState.Complete).Select(x => x.ToCrawl as Crawled).ToAsyncEnumerable();
     }

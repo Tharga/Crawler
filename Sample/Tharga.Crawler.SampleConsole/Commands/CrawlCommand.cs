@@ -16,7 +16,14 @@ internal class CrawlCommand : AsyncActionCommandBase
 
     public override async Task InvokeAsync(string[] param)
     {
-        var uri = QueryParam("Url", param, [new Uri("https://eplicta.se/"), new Uri("https://seafun.se/")]);
+        IEnumerable<Uri> uris =
+        [
+            new("https://thargelion.se/"),
+            new("https://thargelion.com/"),
+            new("https://eplicta.se/"),
+            new("https://seafun.se/"),
+        ];
+        var uri = QueryParam("Url", param, uris);
 
         _crawler.Scheduler.SchedulerEvent += (_, e) => { OutputInformation($"Q: {e.QueueCount}, C: {e.CrawlingCount}, H: {e.CrawledCount}, A: {e.Action}"); };
         //_crawler.CrawlerCompleteEvent += (_, e) => { OutputInformation("Crawl completed."); };

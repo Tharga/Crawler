@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Net;
+﻿using System.Net;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Downloader;
 using Tharga.Crawler.Entity;
@@ -9,18 +8,18 @@ using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler;
 
-internal class Crawler : ICrawler
+public class Crawler : ICrawler
 {
     private readonly IScheduler _scheduler;
     private readonly IPageProcessor _pageProcessor;
     private readonly IDownloader _downloader;
     private readonly ILogger<Crawler> _logger;
 
-    public Crawler(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, ILogger<Crawler> logger = default)
+    public Crawler(IScheduler scheduler = default, IPageProcessor pageProcessor = default, IDownloader downloader = default, ILogger<Crawler> logger = default)
     {
-        _scheduler = scheduler;
-        _pageProcessor = pageProcessor;
-        _downloader = downloader;
+        _scheduler = scheduler ?? new MemoryScheduler();
+        _pageProcessor = pageProcessor ?? new PageProcessorBase();
+        _downloader = downloader ?? new HttpClientDownloader();
         _logger = logger;
     }
 
@@ -28,8 +27,9 @@ internal class Crawler : ICrawler
     public event EventHandler<CrawlerCompleteEventArgs> CrawlerCompleteEvent;
     public event EventHandler<PageCompleteEventArgs> PageCompleteEvent;
 
-    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options, CancellationToken cancellationToken)
+    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default)
     {
+        options ??= new CrawlerOptions();
         if (options.NumberOfCrawlers <= 0) throw new InvalidOperationException("Need at least one crawler.");
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -52,7 +52,7 @@ internal class Crawler : ICrawler
 
         var crawlerResult = new CrawlerResult
         {
-            RequestedPages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None),
+            Pages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None),
             IsCancelled = linkedTokenSource.IsCancellationRequested,
         };
 

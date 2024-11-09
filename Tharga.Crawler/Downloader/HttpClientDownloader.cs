@@ -18,7 +18,7 @@ public class HttpClientDownloader : IDownloader
         _logger = logger;
     }
 
-    public async Task<CrawlContent> GetAsync(ToCrawl toCrawl, DownloadOptions downloadOptions, CancellationToken cancellationToken)
+    public virtual async Task<CrawlContent> GetAsync(ToCrawl toCrawl, DownloadOptions downloadOptions, CancellationToken cancellationToken)
     {
         var handler = new HttpClientHandler
         {

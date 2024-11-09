@@ -31,7 +31,7 @@ public class CrawlerTests
         //Act
         var result = await sut.StartAsync(new Uri("http://aaa.bbb.ccc"), options, CancellationToken.None);
 
-        //Arrange
-        result.RequestedPages.Should().BeEmpty();
+        //Assert
+        result.Pages.Should().BeEmpty();
     }
 }
