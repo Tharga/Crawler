@@ -18,7 +18,7 @@ public class CrawlerTests
     public async Task Basic()
     {
         //Arrange
-        var options = new CrawlerOptions { NumberOfCrawlers = 1 };
+        var options = new CrawlerOptions { NumberOfProcessors = 1 };
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
         scheduler.Setup(x => x.GetAllCrawled()).Returns(Array.Empty<Crawled>().ToAsyncEnumerable);
         scheduler.Setup(x => x.EnqueueAsync(It.IsAny<ToCrawl>(), It.IsAny<SchedulerOptions>())).Returns(Task.CompletedTask);
@@ -31,7 +31,7 @@ public class CrawlerTests
         //Act
         var result = await sut.StartAsync(new Uri("http://aaa.bbb.ccc"), options, CancellationToken.None);
 
-        //Arrange
-        result.RequestedPages.Should().BeEmpty();
+        //Assert
+        result.Pages.Should().BeEmpty();
     }
 }

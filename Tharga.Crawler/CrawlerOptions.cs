@@ -6,7 +6,7 @@ namespace Tharga.Crawler;
 public record CrawlerOptions
 {
     public TimeSpan? MaxCrawlTime { get; init; }
-    public int NumberOfCrawlers { get; init; } = 3;
+    public int NumberOfProcessors { get; init; } = 3;
     public DownloadOptions DownloadOptions { get; init; } = new();
     public SchedulerOptions SchedulerOptions { get; init; }
 }
