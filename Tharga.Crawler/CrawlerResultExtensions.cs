@@ -11,6 +11,6 @@ public static class CrawlerResultExtensions
 
     public static IEnumerable<Crawled> GetFinalPages(this CrawlerResult item)
     {
-        return item.Pages.Where(x => x != null).OrderBy(x => x.Redirects.Length).DistinctBy(x => x.FinalUri);
+        return item.Pages.Where(x => x != null).OrderBy(x => x.Redirects?.Length).DistinctBy(x => x.FinalUri);
     }
 }

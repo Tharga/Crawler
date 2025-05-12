@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Downloader;
 using Tharga.Crawler.Entity;
@@ -7,6 +9,32 @@ using Tharga.Crawler.PageProcessor;
 using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler;
+
+public interface ICrawlerProvider
+{
+    ICrawler GetCrawlerInstance(IScheduler scheduler = default, IPageProcessor pageProcessor = default, IDownloader downloader = default);
+}
+
+internal class CrawlerProvider : ICrawlerProvider
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILoggerFactory _loggerFactory;
+
+    public CrawlerProvider(IServiceProvider serviceProvider, ILoggerFactory loggerFactory)
+    {
+        _serviceProvider = serviceProvider;
+        _loggerFactory = loggerFactory;
+    }
+
+    public ICrawler GetCrawlerInstance(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader)
+    {
+        var logger = _loggerFactory.CreateLogger<Crawler>();
+        scheduler ??= _serviceProvider.GetService<IScheduler>();
+        pageProcessor ??= _serviceProvider.GetService<IPageProcessor>();
+        downloader ??= _serviceProvider.GetService<IDownloader>();
+        return new Crawler(scheduler, pageProcessor, downloader, logger);
+    }
+}
 
 public class Crawler : ICrawler
 {
@@ -29,12 +57,21 @@ public class Crawler : ICrawler
 
     public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default)
     {
+        return await StartAsync([uri], options, cancellationToken);
+    }
+
+    public async Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = default, CancellationToken cancellationToken = default)
+    {
+        var sw = Stopwatch.StartNew();
         options ??= new CrawlerOptions();
         if (options.NumberOfProcessors <= 0) throw new InvalidOperationException("Need at least one crawler.");
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
+        foreach (var uri in uris)
+        {
+            await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
+        }
 
         //NOTE: Set a limitation in time to crawl
         if (options.MaxCrawlTime.HasValue)
@@ -50,10 +87,14 @@ public class Crawler : ICrawler
 
         await RunProcessorsAsync(_scheduler, _pageProcessor, _downloader, options, linkedTokenSource.Token);
 
+        var pages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None);
+        sw.Stop();
+
         var crawlerResult = new CrawlerResult
         {
-            Pages = await _scheduler.GetAllCrawled().ToArrayAsync(CancellationToken.None),
+            Pages = pages,
             IsCancelled = linkedTokenSource.IsCancellationRequested,
+            Elapsed = sw.Elapsed
         };
 
         CrawlerCompleteEvent?.Invoke(this, new CrawlerCompleteEventArgs(crawlerResult));

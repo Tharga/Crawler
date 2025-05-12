@@ -2,7 +2,7 @@
 
 public record CrawlContent : Crawled
 {
-    internal CrawlContent()
+    public CrawlContent()
     {
     }
 

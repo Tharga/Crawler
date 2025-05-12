@@ -8,4 +8,5 @@ public interface ICrawler
     event EventHandler<CrawlerCompleteEventArgs> CrawlerCompleteEvent;
     event EventHandler<PageCompleteEventArgs> PageCompleteEvent;
     Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default);
+    Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = default, CancellationToken cancellationToken = default);
 }
