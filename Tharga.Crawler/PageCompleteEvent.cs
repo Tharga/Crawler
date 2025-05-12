@@ -4,7 +4,7 @@ namespace Tharga.Crawler;
 
 public class PageCompleteEventArgs : EventArgs
 {
-    public PageCompleteEventArgs(CrawlContent crawlContent)
+    internal PageCompleteEventArgs(CrawlContent crawlContent)
     {
         CrawlContent = crawlContent;
     }

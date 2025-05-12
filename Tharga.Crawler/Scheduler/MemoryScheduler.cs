@@ -16,6 +16,7 @@ public class MemoryScheduler : IScheduler
     }
 
     public event EventHandler<SchedulerEventArgs> SchedulerEvent;
+    public event EventHandler<EnqueuedEventArgs> EnqueuedEvent;
 
     public virtual Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
     {
@@ -29,6 +30,7 @@ public class MemoryScheduler : IScheduler
         if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
         {
             SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+            EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(toCrawl));
         }
 
         return Task.CompletedTask;
