@@ -2,7 +2,7 @@
 
 public static class UserAgentLibrary
 {
-    public const string Eplictabot = "EplictaBot/1.0 (+https://eplicta.se/bot.html)";
+    public const string Eplictabot = "EplictaBot/1.0 (+https://eplicta.se/bot/)";
     public const string Googlebot = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
     public const string Bingbot = "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)";
     public const string DuckDuckBot = "DuckDuckBot/1.0 (+http://duckduckgo.com/duckduckbot.html)";

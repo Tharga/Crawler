@@ -45,6 +45,10 @@ public static class ByteArrayConverter
             // Convert binary content to Base64 for safe representation as a string
             return Convert.ToBase64String(data);
         }
+        else if (contentType.MediaType.StartsWith("font/"))
+        {
+            return contentType.MediaType.Replace("//", " ");
+        }
         else
         {
             throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");

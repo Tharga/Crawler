@@ -66,7 +66,7 @@ public class HttpClientDownloader : IDownloader
         }
         catch (TaskCanceledException)
         {
-            return null;
+            throw;
         }
         catch (Exception e)
         {
