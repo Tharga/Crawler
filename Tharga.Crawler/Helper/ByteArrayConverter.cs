@@ -8,6 +8,7 @@ public static class ByteArrayConverter
 {
     public static string ToStringContent(this CrawlContent page)
     {
+        if (page == null) return null;
         return page.Content.ToStringContent(page.ContentType);
     }
 
@@ -51,7 +52,9 @@ public static class ByteArrayConverter
         }
         else
         {
-            throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
+            //TODO: Log output and output as message
+            return default;
+            //throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
         }
     }
 }
