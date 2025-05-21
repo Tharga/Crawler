@@ -8,6 +8,7 @@ public static class ByteArrayConverter
 {
     public static string ToStringContent(this CrawlContent page)
     {
+        if (page == null) return null;
         return page.Content.ToStringContent(page.ContentType);
     }
 
@@ -45,9 +46,15 @@ public static class ByteArrayConverter
             // Convert binary content to Base64 for safe representation as a string
             return Convert.ToBase64String(data);
         }
+        else if (contentType.MediaType.StartsWith("font/"))
+        {
+            return contentType.MediaType.Replace("//", " ");
+        }
         else
         {
-            throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
+            //TODO: Log output and output as message
+            return default;
+            //throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
         }
     }
 }

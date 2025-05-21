@@ -19,6 +19,7 @@ public static class Registration
         };
         options?.Invoke(o);
 
+        services.AddTransient<ICrawlerProvider, CrawlerProvider>();
         services.AddTransient(o.Crawler);
         services.AddTransient(o.Scheduler);
         services.AddTransient(o.PageProcessor);

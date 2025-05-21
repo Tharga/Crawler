@@ -1,10 +1,8 @@
 ﻿namespace Tharga.Crawler.Scheduler;
 
-public enum Action{ Enqueue, Crawl, Complete }
-
 public class SchedulerEventArgs : EventArgs
 {
-    public SchedulerEventArgs(Action action, int queueCount, int crawlingCount, int completeCount)
+    internal SchedulerEventArgs(Action action, int queueCount, int crawlingCount, int completeCount)
     {
         Action = action;
         QueueCount = queueCount;

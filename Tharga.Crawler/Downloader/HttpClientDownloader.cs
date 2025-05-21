@@ -66,7 +66,7 @@ public class HttpClientDownloader : IDownloader
         }
         catch (TaskCanceledException)
         {
-            return null;
+            throw;
         }
         catch (Exception e)
         {
@@ -95,6 +95,7 @@ public class HttpClientDownloader : IDownloader
     private static string GetTitle(byte[] content, ContentType contentType)
     {
         var htmlContent = content.ToStringContent(contentType);
+        if (htmlContent == null) return null;
         var htmlDoc = new HtmlDocument();
         htmlDoc.LoadHtml(htmlContent);
         var titleNode = htmlDoc.DocumentNode.SelectSingleNode("//head/title");

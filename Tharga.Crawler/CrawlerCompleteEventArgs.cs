@@ -2,7 +2,7 @@
 
 public class CrawlerCompleteEventArgs : EventArgs
 {
-    public CrawlerCompleteEventArgs(CrawlerResult crawlerResult)
+    internal CrawlerCompleteEventArgs(CrawlerResult crawlerResult)
     {
         CrawlerResult = crawlerResult;
     }

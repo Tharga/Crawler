@@ -2,9 +2,5 @@
 
 public record CrawlContent : Crawled
 {
-    internal CrawlContent()
-    {
-    }
-
     public byte[] Content { get; init; }
 }
