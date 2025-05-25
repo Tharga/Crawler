@@ -1,5 +1,6 @@
 ﻿namespace Tharga.Crawler.Downloader;
 
+[Obsolete("Use Eplicta.Http.UserAgentLibrary instead")]
 public static class UserAgentLibrary
 {
     public const string Eplictabot = "EplictaBot/1.0 (+https://eplicta.se/bot/)";
