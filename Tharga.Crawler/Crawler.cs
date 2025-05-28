@@ -113,42 +113,58 @@ public class Crawler : ICrawler
                     var result = await downloader.GetAsync(scope.ToCrawl, options.DownloadOptions, cancellationToken);
                     if (result == null) throw new NullReferenceException($"Downloader did not return anything for '{scope.ToCrawl.RequestUri.AbsoluteUri}'.");
 
-                    var responseCodeCategory = result.GetResponseCodeCategory();
-                    switch (responseCodeCategory)
+                    if (result.StatusCode == 0)
                     {
-                        case ResponseCodeCategory.ServerError:
+                        _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                        scope.Commit(result);
+                        continue;
+                    }
+
+                    try
+                    {
+                        var responseCodeCategory = result.GetResponseCodeCategory();
+                        switch (responseCodeCategory)
                         {
-                            if (result.RetryCount < (options.DownloadOptions?.RetryCount ?? 0))
+                            case ResponseCodeCategory.ServerError:
                             {
-                                _logger?.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, scope.ToCrawl.RetryCount);
-                                scope.Retry();
+                                if (result.RetryCount < (options.DownloadOptions?.RetryCount ?? 0))
+                                {
+                                    _logger?.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, scope.ToCrawl.RetryCount);
+                                    scope.Retry();
+                                }
+                                else
+                                {
+                                    _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                    scope.Commit(result);
+                                }
+
+                                break;
                             }
-                            else
-                            {
-                                _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                            case ResponseCodeCategory.Redirection:
+                            case ResponseCodeCategory.Information:
+                            case ResponseCodeCategory.ClientError:
+                                _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
                                 scope.Commit(result);
-                            }
+                                break;
+                            case ResponseCodeCategory.Success:
+                                _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
+                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
+                                {
+                                    await scheduler.EnqueueAsync(item, options.SchedulerOptions);
+                                }
 
-                            break;
+                                scope.Commit(result);
+
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
                         }
-                        case ResponseCodeCategory.Redirection:
-                        case ResponseCodeCategory.Information:
-                        case ResponseCodeCategory.ClientError:
-                            _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
-                            scope.Commit(result);
-                            break;
-                        case ResponseCodeCategory.Success:
-                            _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
-                            PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                            await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
-                            {
-                                await scheduler.EnqueueAsync(item, options.SchedulerOptions);
-                            }
-                            scope.Commit(result);
-
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        _logger?.LogError("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                        scope.Commit(result);
                     }
                 }
             }
