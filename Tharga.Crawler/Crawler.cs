@@ -16,7 +16,7 @@ public class Crawler : ICrawler
     private readonly IDownloader _downloader;
     private readonly ILogger<Crawler> _logger;
 
-    public Crawler(IScheduler scheduler = default, IPageProcessor pageProcessor = default, IDownloader downloader = default, ILogger<Crawler> logger = default)
+    public Crawler(IScheduler scheduler = null, IPageProcessor pageProcessor = null, IDownloader downloader = null, ILogger<Crawler> logger = null)
     {
         _scheduler = scheduler ?? new MemoryScheduler();
         _pageProcessor = pageProcessor ?? new PageProcessorBase();
@@ -27,13 +27,14 @@ public class Crawler : ICrawler
     public IScheduler Scheduler => _scheduler;
     public event EventHandler<CrawlerCompleteEventArgs> CrawlerCompleteEvent;
     public event EventHandler<PageCompleteEventArgs> PageCompleteEvent;
+    public event EventHandler<PageFailedEventArgs> PageFailedEvent;
 
-    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default)
+    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = null, CancellationToken cancellationToken = default)
     {
         return await StartAsync([uri], options, cancellationToken);
     }
 
-    public async Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = default, CancellationToken cancellationToken = default)
+    public async Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = null, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
         options ??= new CrawlerOptions();
@@ -116,6 +117,7 @@ public class Crawler : ICrawler
                     if (result.StatusCode == 0)
                     {
                         _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
                         scope.Commit(result);
                         continue;
                     }
@@ -144,6 +146,7 @@ public class Crawler : ICrawler
                             case ResponseCodeCategory.Information:
                             case ResponseCodeCategory.ClientError:
                                 _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
+                                PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
                                 scope.Commit(result);
                                 break;
                             case ResponseCodeCategory.Success:
@@ -163,7 +166,8 @@ public class Crawler : ICrawler
                     }
                     catch (InvalidOperationException e)
                     {
-                        _logger?.LogError("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                        _logger?.LogError("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries. {message}", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount, e.Message);
+                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
                         scope.Commit(result);
                     }
                 }
