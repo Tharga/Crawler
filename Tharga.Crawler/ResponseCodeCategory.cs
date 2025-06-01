@@ -6,5 +6,5 @@ internal enum ResponseCodeCategory
     Success = 2,
     Redirection = 3,
     ClientError = 4,
-    ServerError = 5,
+    ServerError = 5
 }

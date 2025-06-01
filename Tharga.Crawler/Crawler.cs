@@ -16,7 +16,7 @@ public class Crawler : ICrawler
     private readonly IDownloader _downloader;
     private readonly ILogger<Crawler> _logger;
 
-    public Crawler(IScheduler scheduler = default, IPageProcessor pageProcessor = default, IDownloader downloader = default, ILogger<Crawler> logger = default)
+    public Crawler(IScheduler scheduler = null, IPageProcessor pageProcessor = null, IDownloader downloader = null, ILogger<Crawler> logger = null)
     {
         _scheduler = scheduler ?? new MemoryScheduler();
         _pageProcessor = pageProcessor ?? new PageProcessorBase();
@@ -27,13 +27,14 @@ public class Crawler : ICrawler
     public IScheduler Scheduler => _scheduler;
     public event EventHandler<CrawlerCompleteEventArgs> CrawlerCompleteEvent;
     public event EventHandler<PageCompleteEventArgs> PageCompleteEvent;
+    public event EventHandler<PageFailedEventArgs> PageFailedEvent;
 
-    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = default, CancellationToken cancellationToken = default)
+    public async Task<CrawlerResult> StartAsync(Uri uri, CrawlerOptions options = null, CancellationToken cancellationToken = default)
     {
         return await StartAsync([uri], options, cancellationToken);
     }
 
-    public async Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = default, CancellationToken cancellationToken = default)
+    public async Task<CrawlerResult> StartAsync(Uri[] uris, CrawlerOptions options = null, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
         options ??= new CrawlerOptions();
@@ -113,42 +114,61 @@ public class Crawler : ICrawler
                     var result = await downloader.GetAsync(scope.ToCrawl, options.DownloadOptions, cancellationToken);
                     if (result == null) throw new NullReferenceException($"Downloader did not return anything for '{scope.ToCrawl.RequestUri.AbsoluteUri}'.");
 
-                    var responseCodeCategory = result.GetResponseCodeCategory();
-                    switch (responseCodeCategory)
+                    if (result.StatusCode == 0)
                     {
-                        case ResponseCodeCategory.ServerError:
+                        _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+                        scope.Commit(result);
+                        continue;
+                    }
+
+                    try
+                    {
+                        var responseCodeCategory = result.GetResponseCodeCategory();
+                        switch (responseCodeCategory)
                         {
-                            if (result.RetryCount < (options.DownloadOptions?.RetryCount ?? 0))
+                            case ResponseCodeCategory.ServerError:
                             {
-                                _logger?.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, scope.ToCrawl.RetryCount);
-                                scope.Retry();
+                                if (result.RetryCount < (options.DownloadOptions?.RetryCount ?? 0))
+                                {
+                                    _logger?.LogInformation("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Retry no {retryCount}.", crawlerNo, result.RequestUri, result.StatusCode, scope.ToCrawl.RetryCount);
+                                    scope.Retry();
+                                }
+                                else
+                                {
+                                    _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                    scope.Commit(result);
+                                }
+
+                                break;
                             }
-                            else
-                            {
-                                _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                            case ResponseCodeCategory.Redirection:
+                            case ResponseCodeCategory.Information:
+                            case ResponseCodeCategory.ClientError:
+                                _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
+                                PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
                                 scope.Commit(result);
-                            }
+                                break;
+                            case ResponseCodeCategory.Success:
+                                _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
+                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
+                                {
+                                    await scheduler.EnqueueAsync(item, options.SchedulerOptions);
+                                }
 
-                            break;
+                                scope.Commit(result);
+
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
                         }
-                        case ResponseCodeCategory.Redirection:
-                        case ResponseCodeCategory.Information:
-                        case ResponseCodeCategory.ClientError:
-                            _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
-                            scope.Commit(result);
-                            break;
-                        case ResponseCodeCategory.Success:
-                            _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
-                            PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                            await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
-                            {
-                                await scheduler.EnqueueAsync(item, options.SchedulerOptions);
-                            }
-                            scope.Commit(result);
-
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Unknown response category '{responseCodeCategory}'.");
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        _logger?.LogError("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries. {message}", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount, e.Message);
+                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+                        scope.Commit(result);
                     }
                 }
             }
