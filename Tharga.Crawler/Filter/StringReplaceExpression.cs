@@ -2,6 +2,6 @@
 
 public record StringReplaceExpression
 {
-    public string Expression { get; init; }
+    public string Pattern { get; init; }
     public string Replacement { get; init; }
 }

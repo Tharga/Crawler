@@ -32,6 +32,8 @@ public class MemoryScheduler : IScheduler
 
         if(toCrawl.RequestUri.Filter(options?.UrlFilters)) return Task.CompletedTask;
 
+        toCrawl = toCrawl with { RequestUri = toCrawl.RequestUri.ApplyUrlReplacements(options?.UrlReplaceExpressions ?? []) };
+
         var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
         if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
         {

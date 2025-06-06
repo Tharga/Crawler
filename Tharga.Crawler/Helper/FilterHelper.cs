@@ -1,7 +1,5 @@
 ﻿using System.Text.RegularExpressions;
-using Tharga.Crawler.Entity;
 using Tharga.Crawler.Filter;
-using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler.Helper;
 
