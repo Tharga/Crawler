@@ -1,9 +1,6 @@
-﻿using Microsoft.Extensions.FileSystemGlobbing.Internal;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Text.RegularExpressions;
 using Tharga.Crawler.Entity;
-using Tharga.Crawler.Filter;
 using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
