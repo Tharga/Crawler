@@ -62,7 +62,8 @@ var options = new CrawlerOptions
     },
     SchedulerOptions = new SchedulerOptions
     {
-        MaxQueueCount = null                    //Number of maximum items to be queued. (Default is no limit)
+        MaxQueueCount = null,                   //Number of maximum items to be queued. (Default is no limit)
+        UrlFilters = null                       //Url filters that limit what urls will be queued. (Default is no filter)
     }
 };
 var result = await crawler.StartAsync(new Uri("https://thargelion.se/"), options);```
@@ -81,7 +82,3 @@ The currently built in components that are used are..
 - `PageProcessorBase`. It stays on the domain on the provided uri.
 - `HttpClientDownloader`. It uses a regular ´HttpClient´ to download content.
 
-## Planned
-- Persistable Scheduler using MongoDB, so that crawls can be resumed.
-- A page processor that uses injectable rules and filters.
-- Chromium Downloader to support SPA sites.

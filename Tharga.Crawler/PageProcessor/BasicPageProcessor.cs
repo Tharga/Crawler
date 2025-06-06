@@ -7,11 +7,11 @@ using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.PageProcessor;
 
-public class PageProcessorBase : IPageProcessor
+public class BasicPageProcessor : IPageProcessor
 {
-    private readonly ILogger<PageProcessorBase> _logger;
+    private readonly ILogger<BasicPageProcessor> _logger;
 
-    public PageProcessorBase(ILogger<PageProcessorBase> logger = default)
+    public BasicPageProcessor(ILogger<BasicPageProcessor> logger = default)
     {
         _logger = logger;
     }
@@ -69,5 +69,7 @@ public class PageProcessorBase : IPageProcessor
                 };
             }
         }
+
+        await Task.Delay(0);
     }
 }

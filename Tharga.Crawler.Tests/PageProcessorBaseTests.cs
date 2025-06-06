@@ -13,7 +13,7 @@ public class PageProcessorBaseTests
     {
         //Arrange
         var crawlContent = Mock.Of<CrawlContent>(x => x.RequestUri == new Uri("http://some.site"));
-        var sut = new PageProcessorBase();
+        var sut = new BasicPageProcessor();
 
         //Act
         var result = await sut.ProcessAsync(crawlContent, new CrawlerOptions(), CancellationToken.None).ToArrayAsync();

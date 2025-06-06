@@ -12,10 +12,11 @@ public static class Registration
     {
         var o = new CrawlerRegistrationOptions
         {
-            Crawler = provider => new Crawler(provider.GetService<IScheduler>(), provider.GetService<IPageProcessor>(), provider.GetService<IDownloader>(), provider.GetService<ILogger<Crawler>>()),
-            Scheduler = provider => new MemoryScheduler(provider.GetService<ILogger<MemoryScheduler>>()),
-            PageProcessor = provider => new PageProcessorBase(provider.GetService<ILogger<PageProcessorBase>>()),
-            Downloader = provider => new HttpClientDownloader(provider.GetService<ILogger<HttpClientDownloader>>())
+            Crawler = provider => new Crawler(provider.GetService<IScheduler>(), provider.GetService<IPageProcessor>(), provider.GetService<IDownloader>(), provider.GetService<ILoggerFactory>().CreateLogger<Crawler>()),
+            Scheduler = provider => new MemoryScheduler(provider.GetService<IUriService>(), provider.GetService<ILogger<MemoryScheduler>>()),
+            PageProcessor = provider => new PageProcessor.BasicPageProcessor(provider.GetService<ILogger<PageProcessor.BasicPageProcessor>>()),
+            Downloader = provider => new HttpClientDownloader(provider.GetService<ILogger<HttpClientDownloader>>()),
+            UriService = provider => new UriService(provider.GetService<ILogger<UriService>>())
         };
         options?.Invoke(o);
 
@@ -24,5 +25,6 @@ public static class Registration
         services.AddTransient(o.Scheduler);
         services.AddTransient(o.PageProcessor);
         services.AddTransient(o.Downloader);
+        services.AddTransient(o.UriService);
     }
 }

@@ -4,7 +4,7 @@ using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Helper;
 
-public static class ByteArrayConverter
+internal static class ByteArrayConverter
 {
     public static string ToStringContent(this CrawlContent page)
     {
@@ -48,7 +48,8 @@ public static class ByteArrayConverter
         }
         else if (contentType.MediaType.StartsWith("font/"))
         {
-            return contentType.MediaType.Replace("//", " ");
+            return default;
+            //return contentType.MediaType.Replace("//", " ");
         }
         else
         {
