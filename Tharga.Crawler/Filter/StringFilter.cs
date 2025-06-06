@@ -1,6 +1,6 @@
 ﻿namespace Tharga.Crawler.Filter;
 
-public record UrlFilter
+public record StringFilter
 {
     /// <summary>
     /// Expression as text or regex.

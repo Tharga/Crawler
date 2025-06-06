@@ -1,11 +1,9 @@
-﻿using System;
-using System.Data.SqlTypes;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Tharga.Crawler.Filter;
 
 namespace Tharga.Crawler.Helper;
 
-public static class UriHelper
+internal static class UriHelper
 {
     public static Uri TrimFragment(Uri uri)
     {
@@ -13,7 +11,13 @@ public static class UriHelper
         return new Uri($"{uri.GetLeftPart(UriPartial.Path)}{uri.Query}");
     }
 
-    public static string ApplyUrlReplacements(this string uriString, StringReplaceExpression[] urlReplaceExpressions)
+    public static Uri ApplyUrlReplacements(this Uri uri, StringReplaceExpression[] urlReplaceExpressions)
+    {
+        var uriString = uri.AbsoluteUri;
+        return new Uri(uriString.ApplyUrlReplacements(urlReplaceExpressions));
+    }
+
+    private static string ApplyUrlReplacements(this string uriString, StringReplaceExpression[] urlReplaceExpressions)
     {
         if (urlReplaceExpressions.Length == 0) return uriString;
 
@@ -32,12 +36,5 @@ public static class UriHelper
         }
 
         return uriString;
-    }
-
-    public static Uri ApplyUrlReplacements(this Uri uri, StringReplaceExpression[] urlReplaceExpressions)
-    {
-        var uriString = uri.AbsoluteUri;
-
-        return new Uri(uriString.ApplyUrlReplacements(urlReplaceExpressions));
     }
 }

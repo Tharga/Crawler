@@ -19,10 +19,10 @@ internal class CrawlerProvider : ICrawlerProvider
 
     public ICrawler GetCrawlerInstance(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader)
     {
-        var logger = _loggerFactory.CreateLogger<Crawler>();
         scheduler ??= _serviceProvider.GetService<IScheduler>();
         pageProcessor ??= _serviceProvider.GetService<IPageProcessor>();
         downloader ??= _serviceProvider.GetService<IDownloader>();
+        var logger = _loggerFactory.CreateLogger<Crawler>();
         return new Crawler(scheduler, pageProcessor, downloader, logger);
     }
 }
