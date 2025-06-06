@@ -10,3 +10,4 @@ public record CrawlerOptions
     public DownloadOptions DownloadOptions { get; init; } = new();
     public SchedulerOptions SchedulerOptions { get; init; }
 }
+

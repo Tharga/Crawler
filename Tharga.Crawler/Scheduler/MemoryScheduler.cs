@@ -1,6 +1,10 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Tharga.Crawler.Entity;
+using Tharga.Crawler.Filter;
+using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
 
@@ -26,6 +30,8 @@ public class MemoryScheduler : IScheduler
             return Task.CompletedTask;
         }
 
+        if(toCrawl.RequestUri.Filter(options?.UrlFilters)) return Task.CompletedTask;
+
         var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
         if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
         {
@@ -35,6 +41,7 @@ public class MemoryScheduler : IScheduler
 
         return Task.CompletedTask;
     }
+
 
     public virtual async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
     {

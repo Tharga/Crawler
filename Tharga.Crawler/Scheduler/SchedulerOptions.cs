@@ -1,6 +1,9 @@
-﻿namespace Tharga.Crawler.Scheduler;
+﻿using Tharga.Crawler.Filter;
+
+namespace Tharga.Crawler.Scheduler;
 
 public record SchedulerOptions
 {
     public int? MaxQueueCount { get; init; }
+    public StringFilter[] UrlFilters { get; init; }
 }
