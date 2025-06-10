@@ -62,7 +62,8 @@ var options = new CrawlerOptions
     },
     SchedulerOptions = new SchedulerOptions
     {
-        MaxQueueCount = null                    //Number of maximum items to be queued. (Default is no limit)
+        MaxQueueCount = null,                   //Number of maximum items to be queued. (Default is no limit)
+        UrlFilters = null                       //Url filters that limit what urls will be queued. (Default is no filter)
     }
 };
 var result = await crawler.StartAsync(new Uri("https://thargelion.se/"), options);```
@@ -74,14 +75,36 @@ It uses the `IDownloader` to download pages, the `IScheduler` to handle the queu
 
 ![Process Diagram](Resources/Tharga.Crawler.Process.svg)
 
-## Customize behaviour
-This version is not yet fully customizable.
-The currently built in components that are used are..
-- `MemoryScheduler`, that uses memory for queue and result.
-- `PageProcessorBase`. It stays on the domain on the provided uri.
-- `HttpClientDownloader`. It uses a regular ´HttpClient´ to download content.
+## Built in default behaviour
+There is built in components for basic handling of the crawler.
 
-## Planned
-- Persistable Scheduler using MongoDB, so that crawls can be resumed.
-- A page processor that uses injectable rules and filters.
-- Chromium Downloader to support SPA sites.
+### HttpClientDownloader
+Uses the http client to fetch content.
+
+### BasicPageProcessor
+This is the component that process each page.
+The input is a page with full html and the output is a list of links found on the page always staying on the domain provided as first uri.
+It uses *HtmlAgilityPack* to process html and find links.
+
+### MemoryScheduler
+Uses the memory for the page queue.
+The method of crawling is shallow, meaning that it first crawls the pages closes to the initial page.
+The scheduler also uses *IUriService*.
+
+## Customize
+It is possible to implement components that will be used instead of the built in components.
+Just creat an implementation of the interfaces or inherit from the built in types.
+Then register the custom version in the IOC and it will be used by the Crawler.
+
+### IDownloader
+Used to handle the actual downloading of the content. Possible alternativs could be implementations that uses a CEF or other type of browser to download the content.
+
+### IPageProcessor
+This interface can be implemented as alternative on how to process the actual html to find links.
+
+### IScheduler
+Implement to handle the queue, both what has not yet been crawled or what has been crawled before.
+Possible versions of the crawler could be a persistable crawler that saves the queue to a database.
+
+### IUriService
+Used to create filters or uri mutations. By default it is used by the *MemoryScheduler*.

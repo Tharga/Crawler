@@ -16,12 +16,19 @@ public class Crawler : ICrawler
     private readonly IDownloader _downloader;
     private readonly ILogger<Crawler> _logger;
 
-    public Crawler(IScheduler scheduler = null, IPageProcessor pageProcessor = null, IDownloader downloader = null, ILogger<Crawler> logger = null)
+    internal Crawler(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, ILogger<Crawler> logger)
     {
-        _scheduler = scheduler ?? new MemoryScheduler();
-        _pageProcessor = pageProcessor ?? new PageProcessorBase();
-        _downloader = downloader ?? new HttpClientDownloader();
+        _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
+        _pageProcessor = pageProcessor ?? throw new ArgumentNullException(nameof(pageProcessor));
+        _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
         _logger = logger;
+    }
+
+    public Crawler(IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader)
+    {
+        _scheduler = scheduler ?? new MemoryScheduler(new UriService());
+        _pageProcessor = pageProcessor ?? new BasicPageProcessor();
+        _downloader = downloader ?? new HttpClientDownloader();
     }
 
     public IScheduler Scheduler => _scheduler;

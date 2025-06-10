@@ -1,30 +1,39 @@
-﻿using System.Collections.Concurrent;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using Tharga.Crawler.Entity;
+using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
 
 public class MemoryScheduler : IScheduler
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly IUriService _uriService;
     private readonly ILogger<MemoryScheduler> _logger;
     private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
 
-    public MemoryScheduler(ILogger<MemoryScheduler> logger = default)
+    public MemoryScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = null)
     {
+        _uriService = uriService;
         _logger = logger;
     }
 
     public event EventHandler<SchedulerEventArgs> SchedulerEvent;
     public event EventHandler<EnqueuedEventArgs> EnqueuedEvent;
 
-    public virtual Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
+    public virtual async Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
     {
         if (_schedule.Count >= options?.MaxQueueCount)
         {
             _logger?.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
-            return Task.CompletedTask;
+            return;
         }
+
+        if (!await _uriService.ShouldIncludeAsync(toCrawl.RequestUri)) return;
+        if (toCrawl.RequestUri.Filter(options?.UrlFilters)) return;
+
+        toCrawl = toCrawl with { RequestUri = await _uriService.MutateUriAsync(toCrawl.RequestUri) };
+        toCrawl = toCrawl with { RequestUri = toCrawl.RequestUri.ApplyUrlReplacements(options?.UrlReplaceExpressions ?? []) };
 
         var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
         if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
@@ -32,9 +41,8 @@ public class MemoryScheduler : IScheduler
             SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
             EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(toCrawl));
         }
-
-        return Task.CompletedTask;
     }
+
 
     public virtual async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
     {

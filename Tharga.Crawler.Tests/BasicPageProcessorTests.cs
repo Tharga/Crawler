@@ -6,14 +6,14 @@ using Xunit;
 
 namespace Tharga.Crawler.Tests;
 
-public class PageProcessorBaseTests
+public class BasicPageProcessorTests
 {
     [Fact]
     public async Task Empty()
     {
         //Arrange
         var crawlContent = Mock.Of<CrawlContent>(x => x.RequestUri == new Uri("http://some.site"));
-        var sut = new PageProcessorBase();
+        var sut = new BasicPageProcessor();
 
         //Act
         var result = await sut.ProcessAsync(crawlContent, new CrawlerOptions(), CancellationToken.None).ToArrayAsync();

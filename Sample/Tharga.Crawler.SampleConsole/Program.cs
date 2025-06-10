@@ -1,15 +1,10 @@
-﻿using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Tharga.Console;
 using Tharga.Console.Commands;
 using Tharga.Console.Consoles;
 using Tharga.Crawler;
-using Tharga.Crawler.Downloader;
-using Tharga.Crawler.Entity;
-using Tharga.Crawler.PageProcessor;
 using Tharga.Crawler.SampleConsole.Commands;
-using Tharga.Crawler.Scheduler;
 
 var services = new ServiceCollection();
 services.AddTransient<CrawlCommand>();
