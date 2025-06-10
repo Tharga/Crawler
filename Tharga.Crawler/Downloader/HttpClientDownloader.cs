@@ -13,7 +13,7 @@ public class HttpClientDownloader : IDownloader
 {
     private readonly ILogger<HttpClientDownloader> _logger;
 
-    public HttpClientDownloader(ILogger<HttpClientDownloader> logger = default)
+    public HttpClientDownloader(ILogger<HttpClientDownloader> logger = null)
     {
         _logger = logger;
     }

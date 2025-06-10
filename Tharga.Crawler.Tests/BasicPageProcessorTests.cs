@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Tharga.Crawler.Tests;
 
-public class PageProcessorBaseTests
+public class BasicPageProcessorTests
 {
     [Fact]
     public async Task Empty()

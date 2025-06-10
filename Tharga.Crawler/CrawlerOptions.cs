@@ -1,5 +1,4 @@
 ﻿using Tharga.Crawler.Downloader;
-using Tharga.Crawler.Filter;
 using Tharga.Crawler.Scheduler;
 
 namespace Tharga.Crawler;
@@ -11,4 +10,3 @@ public record CrawlerOptions
     public DownloadOptions DownloadOptions { get; init; } = new();
     public SchedulerOptions SchedulerOptions { get; init; }
 }
-

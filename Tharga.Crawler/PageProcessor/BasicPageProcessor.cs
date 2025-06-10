@@ -11,7 +11,7 @@ public class BasicPageProcessor : IPageProcessor
 {
     private readonly ILogger<BasicPageProcessor> _logger;
 
-    public BasicPageProcessor(ILogger<BasicPageProcessor> logger = default)
+    public BasicPageProcessor(ILogger<BasicPageProcessor> logger = null)
     {
         _logger = logger;
     }

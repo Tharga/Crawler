@@ -12,7 +12,7 @@ public class MemoryScheduler : IScheduler
     private readonly ILogger<MemoryScheduler> _logger;
     private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
 
-    public MemoryScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = default)
+    public MemoryScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = null)
     {
         _uriService = uriService;
         _logger = logger;
