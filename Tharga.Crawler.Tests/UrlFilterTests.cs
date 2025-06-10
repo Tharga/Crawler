@@ -21,7 +21,7 @@ public class UrlFilterTests
     {
         //Arrange
         var uri = new Uri(url);
-        var urlFilters = filter.Split(",").Where(x => !string.IsNullOrEmpty(x)).Select(x => new StringFilter { Expression = x, Operation = FilterOperation.Exclude }).ToArray();
+        var urlFilters = filter.Split(",").Where(x => !string.IsNullOrEmpty(x)).Select(x => new UrlFilter { Expression = x, Operation = FilterOperation.Exclude }).ToArray();
 
         //Act
         var excluded = uri.Filter(urlFilters);
@@ -44,7 +44,7 @@ public class UrlFilterTests
     {
         //Arrange
         var uri = new Uri(url);
-        var urlFilters = filter.Split(",").Where(x => !string.IsNullOrEmpty(x)).Select(x => new StringFilter { Expression = x, Operation = FilterOperation.Include }).ToArray();
+        var urlFilters = filter.Split(",").Where(x => !string.IsNullOrEmpty(x)).Select(x => new UrlFilter { Expression = x, Operation = FilterOperation.Include }).ToArray();
 
         //Act
         var excluded = uri.Filter(urlFilters);

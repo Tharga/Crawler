@@ -11,13 +11,13 @@ internal static class UriHelper
         return new Uri($"{uri.GetLeftPart(UriPartial.Path)}{uri.Query}");
     }
 
-    public static Uri ApplyUrlReplacements(this Uri uri, StringReplaceExpression[] urlReplaceExpressions)
+    public static Uri ApplyUrlReplacements(this Uri uri, UrlReplaceExpression[] urlReplaceExpressions)
     {
         var uriString = uri.AbsoluteUri;
         return new Uri(uriString.ApplyUrlReplacements(urlReplaceExpressions));
     }
 
-    private static string ApplyUrlReplacements(this string uriString, StringReplaceExpression[] urlReplaceExpressions)
+    private static string ApplyUrlReplacements(this string uriString, UrlReplaceExpression[] urlReplaceExpressions)
     {
         if (urlReplaceExpressions.Length == 0) return uriString;
 

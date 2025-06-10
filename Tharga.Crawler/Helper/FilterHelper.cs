@@ -5,12 +5,12 @@ namespace Tharga.Crawler.Helper;
 
 internal static class FilterHelper
 {
-    public static bool Filter(this Uri uri, StringFilter[] filters)
+    public static bool Filter(this Uri uri, UrlFilter[] filters)
     {
         return Filter(uri, filters, FilterOperation.Exclude) || !Filter(uri, filters, FilterOperation.Include);
     }
 
-    private static bool Filter(Uri uri, StringFilter[] filters, FilterOperation operation)
+    private static bool Filter(Uri uri, UrlFilter[] filters, FilterOperation operation)
     {
         filters = filters?.Where(x => x.Operation == operation).ToArray() ?? [];
 
@@ -24,7 +24,7 @@ internal static class FilterHelper
         return false;
     }
 
-    private static bool IsMatch(Uri uri, StringFilter filter)
+    private static bool IsMatch(Uri uri, UrlFilter filter)
     {
         var uriString = uri.AbsoluteUri;
         try
