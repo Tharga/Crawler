@@ -4,7 +4,7 @@ using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Helper;
 
-internal static class ByteArrayConverter
+public static class ByteArrayConverter
 {
     public static string ToStringContent(this CrawlContent page)
     {
