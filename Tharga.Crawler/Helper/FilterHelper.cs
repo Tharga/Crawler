@@ -3,7 +3,7 @@ using Tharga.Crawler.Filter;
 
 namespace Tharga.Crawler.Helper;
 
-internal static class FilterHelper
+public static class FilterHelper
 {
     public static bool Filter(this Uri uri, UrlFilter[] filters)
     {

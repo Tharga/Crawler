@@ -3,7 +3,7 @@ using Tharga.Crawler.Filter;
 
 namespace Tharga.Crawler.Helper;
 
-internal static class UriHelper
+public static class UriHelper
 {
     public static Uri TrimFragment(Uri uri)
     {
@@ -17,7 +17,7 @@ internal static class UriHelper
         return new Uri(uriString.ApplyUrlReplacements(urlReplaceExpressions));
     }
 
-    private static string ApplyUrlReplacements(this string uriString, UrlReplaceExpression[] urlReplaceExpressions)
+    public static string ApplyUrlReplacements(this string uriString, UrlReplaceExpression[] urlReplaceExpressions)
     {
         if (urlReplaceExpressions.Length == 0) return uriString;
 
