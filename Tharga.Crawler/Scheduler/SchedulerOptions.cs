@@ -11,15 +11,15 @@ public record SchedulerOptions
     public int? MaxQueueCount { get; init; }
 
     /// <summary>
-    /// List of filters used to ignre adding urls to the scheduler.
-    /// If the filter matches the expression, the page will not be added.
-    /// The filter uses the request uri, not the response (if redirected), it is run before url replacement.
-    /// </summary>
-    public UrlFilter[] UrlFilters { get; init; }
+    ///// List of filters used to ignre adding urls to the scheduler.
+    ///// If the filter matches the expression, the page will not be added.
+    ///// The filter uses the request uri, not the response (if redirected), it is run before url replacement.
+    ///// </summary>
+    //public UrlFilter[] UrlFilters { get; init; }
 
-    /// <summary>
-    /// List of replacement expressions that makes it possible to mutate uris before they are added to the scheduler.
-    /// Url replacement is run after the url filters.
-    /// </summary>
-    public UrlReplaceExpression[] UrlReplaceExpressions { get; init; }
+    ///// <summary>
+    ///// List of replacement expressions that makes it possible to mutate uris before they are added to the scheduler.
+    ///// Url replacement is run after the url filters.
+    ///// </summary>
+    //public UrlReplaceExpression[] UrlReplaceExpressions { get; init; }
 }
