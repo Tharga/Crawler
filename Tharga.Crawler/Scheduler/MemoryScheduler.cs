@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using Tharga.Crawler.Entity;
-using Tharga.Crawler.Helper;
 
 namespace Tharga.Crawler.Scheduler;
 
@@ -30,10 +29,8 @@ public class MemoryScheduler : IScheduler
         }
 
         if (!await _uriService.ShouldIncludeAsync(toCrawl.RequestUri)) return;
-        //if (toCrawl.RequestUri.Filter(options?.UrlFilters)) return;
 
         toCrawl = toCrawl with { RequestUri = await _uriService.MutateUriAsync(toCrawl.RequestUri) };
-        //toCrawl = toCrawl with { RequestUri = toCrawl.RequestUri.ApplyUrlReplacements(options?.UrlReplaceExpressions ?? []) };
 
         var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
         if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
