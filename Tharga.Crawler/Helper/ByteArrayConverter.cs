@@ -4,7 +4,7 @@ using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Helper;
 
-internal static class ByteArrayConverter
+public static class ByteArrayConverter
 {
     public static string ToStringContent(this CrawlContent page)
     {
@@ -38,24 +38,23 @@ internal static class ByteArrayConverter
             }
             return encoding.GetString(data);
         }
-        else if (contentType.MediaType.StartsWith("application/") ||
-                 contentType.MediaType.StartsWith("image/") ||
-                 contentType.MediaType.StartsWith("audio/") ||
-                 contentType.MediaType.StartsWith("video/"))
+
+        if (contentType.MediaType.StartsWith("application/") ||
+            contentType.MediaType.StartsWith("image/") ||
+            contentType.MediaType.StartsWith("audio/") ||
+            contentType.MediaType.StartsWith("video/"))
         {
             // Convert binary content to Base64 for safe representation as a string
             return Convert.ToBase64String(data);
         }
-        else if (contentType.MediaType.StartsWith("font/"))
+
+        if (contentType.MediaType.StartsWith("font/"))
         {
-            return default;
-            //return contentType.MediaType.Replace("//", " ");
+            return null;
         }
-        else
-        {
-            //TODO: Log output and output as message
-            return default;
-            //throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
-        }
+
+        //TODO: Log output and output as message
+        return null;
+        //throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
     }
 }

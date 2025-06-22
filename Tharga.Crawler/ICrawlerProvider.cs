@@ -6,5 +6,5 @@ namespace Tharga.Crawler;
 
 public interface ICrawlerProvider
 {
-    ICrawler GetCrawlerInstance(IScheduler scheduler = default, IPageProcessor pageProcessor = default, IDownloader downloader = default);
+    ICrawler GetCrawlerInstance(IScheduler scheduler = null, IPageProcessor pageProcessor = null, IDownloader downloader = null);
 }
