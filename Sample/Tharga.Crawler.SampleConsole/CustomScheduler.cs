@@ -7,7 +7,7 @@ namespace Tharga.Crawler.SampleConsole;
 
 public class CustomScheduler : MemoryScheduler
 {
-    public CustomScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = default)
+    public CustomScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = null)
         : base(uriService, logger)
     {
     }

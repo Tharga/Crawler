@@ -108,3 +108,4 @@ Possible versions of the crawler could be a persistable crawler that saves the q
 
 ### IUriService
 Used to create filters or uri mutations. By default it is used by the *MemoryScheduler*.
+The method *ShouldEnqueueAsync* is called first, after that *MutateUriAsync* is called.

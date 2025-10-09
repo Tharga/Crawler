@@ -25,24 +25,13 @@ public class BasicPageProcessor : IPageProcessor
         }
 
         var count = 0;
-        await foreach (var link in GetLinks(page).Distinct().WithCancellation(cancellationToken))
+        await foreach (var link in GetLinks(page).WithCancellation(cancellationToken))
         {
-            if (!link.RequestUri.Scheme.StartsWith("http"))
-            {
-                _logger?.LogTrace("Skipping {uri} because not scheme http or https.", link.RequestUri);
-            }
-            else if (!page.RequestUri.HaveSameRootDomain(link.RequestUri))
-            {
-                _logger?.LogTrace("Skipping {uri} because not in domain {domain}.", link.RequestUri, page.RequestUri.GetRootDomain());
-            }
-            else
-            {
-                count++;
-                yield return link;
-            }
+            count++;
+            yield return link;
         }
 
-        _logger?.LogInformation("Found {linkCount} on page {uri}.", count, page.FinalUri);
+        _logger?.LogInformation("Found {linkCount} links on page {uri}.", count, page.FinalUri);
     }
 
     private async IAsyncEnumerable<ToCrawl> GetLinks(CrawlContent page)
