@@ -2,6 +2,6 @@
 
 public interface IUriService
 {
-    public Task<bool> ShouldIncludeAsync(Uri uri);
+    public Task<bool> ShouldEnqueueAsync(Uri parentUri, Uri uri);
     public Task<Uri> MutateUriAsync(Uri uri);
 }

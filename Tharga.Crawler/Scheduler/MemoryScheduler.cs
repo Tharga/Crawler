@@ -28,7 +28,7 @@ public class MemoryScheduler : IScheduler
             return;
         }
 
-        if (!await _uriService.ShouldIncludeAsync(toCrawl.RequestUri)) return;
+        if (!await _uriService.ShouldEnqueueAsync(toCrawl.Parent?.RequestUri, toCrawl.RequestUri)) return;
 
         toCrawl = toCrawl with { RequestUri = await _uriService.MutateUriAsync(toCrawl.RequestUri) };
 
@@ -39,7 +39,6 @@ public class MemoryScheduler : IScheduler
             EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(toCrawl));
         }
     }
-
 
     public virtual async Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken)
     {
@@ -71,6 +70,11 @@ public class MemoryScheduler : IScheduler
         {
             _lock.Release();
         }
+    }
+
+    public IAsyncEnumerable<ToCrawl> GetQueued()
+    {
+        return _schedule.Values.Where(x => x.State == ScheduleItemState.Queued).Select(x => x.ToCrawl).ToAsyncEnumerable();
     }
 
     public virtual IAsyncEnumerable<Crawled> GetAllCrawled()

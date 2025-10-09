@@ -8,7 +8,7 @@ namespace Tharga.Crawler;
 
 public static class Registration
 {
-    public static void RegisterCrawler(this IServiceCollection services, Action<CrawlerRegistrationOptions> options = default)
+    public static void RegisterCrawler(this IServiceCollection services, Action<CrawlerRegistrationOptions> options = null)
     {
         var o = new CrawlerRegistrationOptions
         {
