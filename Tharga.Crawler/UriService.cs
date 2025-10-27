@@ -18,7 +18,7 @@ public class UriService : IUriService
     /// <param name="parentUri"></param>
     /// <param name="uri"></param>
     /// <returns></returns>
-    public Task<bool> ShouldEnqueueAsync(Uri parentUri, Uri uri)
+    public virtual Task<bool> ShouldEnqueueAsync(Uri parentUri, Uri uri)
     {
         if (!uri.Scheme.StartsWith("http"))
         {

@@ -1,18 +1,16 @@
 ﻿namespace Tharga.Crawler.Helper;
 
-internal static class DomainHelper
+public static class DomainHelper
 {
     public static string GetRootDomain(this Uri uri)
     {
         var hostParts = uri.Host.Split('.');
 
-        // Ensure there are at least two parts (e.g., root.com)
         if (hostParts.Length < 2)
         {
             return uri.Host;
         }
 
-        // Take the last two segments for the root domain
         return string.Join(".", hostParts.TakeLast(2));
     }
 
@@ -44,6 +42,6 @@ internal static class DomainHelper
         candidateHost = candidateHost.ToLowerInvariant();
 
         // Exact match or subdomain match
-        return candidateHost == baseHost || candidateHost.EndsWith("." + baseHost);
+        return candidateHost == baseHost || candidateHost.EndsWith($".{baseHost}");
     }
 }
