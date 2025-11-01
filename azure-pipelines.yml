@@ -39,7 +39,7 @@ stages:
       inputs:
         command: 'build'
         projects: '**/*.csproj'
-        arguments: '-c Release'
+        arguments: '-c Release --no-restore /p:Version=$(Build.BuildNumber)'
         versioningScheme: 'byBuildNumber'
 
     - task: DotNetCoreCLI@2
