@@ -1,7 +1,7 @@
 trigger:
 - master
 
-name: 0.1.$(Rev:r)
+name: 1.0.$(Rev:r)
 
 pool:
   vmImage: 'windows-latest'
@@ -20,9 +20,9 @@ stages:
 
     steps:
     - task: UseDotNet@2
-      displayName: 'Use .NET 9'
+      displayName: 'Use .NET 10'
       inputs:
-        version: 9.0.x
+        version: 10.0.x
         includePreviewVersions: false
 
     - task: NuGetToolInstaller@1
@@ -39,7 +39,7 @@ stages:
       inputs:
         command: 'build'
         projects: '**/*.csproj'
-        arguments: '-c Release /p:NoWarn=0618'
+        arguments: '-c Release --no-restore /p:Version=$(Build.BuildNumber)'
         versioningScheme: 'byBuildNumber'
 
     - task: DotNetCoreCLI@2
