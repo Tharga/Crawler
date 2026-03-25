@@ -1,33 +1,87 @@
 # Tharga Crawler
+
 [![NuGet](https://img.shields.io/nuget/v/Tharga.Crawler)](https://www.nuget.org/packages/Tharga.Crawler)
 ![Nuget](https://img.shields.io/nuget/dt/Tharga.Crawler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub repo Issues](https://img.shields.io/github/issues/Tharga/Crawler?style=flat&logo=github&logoColor=red&label=Issues)](https://github.com/Tharga/Crawler/issues?q=is%3Aopen)
 
-Customizable crawler for .NET written in C#.
+A customizable web crawler framework for .NET written in C#. Supports .NET 8, .NET 9, and .NET 10.
 
-## Get started
-This is the most basic simple 
+## Installation
+
+```bash
+dotnet add package Tharga.Crawler
 ```
+
+## Quick Start
+
+The simplest way to crawl a site:
+
+```csharp
 var crawler = new Crawler();
-var result = await crawler.StartAsync(new Uri("https://thargelion.se/"));
+var result = await crawler.StartAsync(new Uri("https://example.com/"));
 ```
 
-## Background
-There are two options for crawling, either by awaiting the `StartAsync` method (like in the example above) or by listening for the event `CrawlerCompleteEvent`.
+You can also crawl multiple starting points at once:
 
-Crawler that runs in the bacground and fires an event on completion.
-```
+```csharp
 var crawler = new Crawler();
-crawler.CrawlerCompleteEvent += (s, e) => { Console.WriteLine($"Completed with {e.CrawlerResult.GetRequestedPages().Count()} page requests and {e.CrawlerResult.GetFinalPages().Count()} final pages collected."); };
-crawler.StartAsync(new Uri("https://thargelion.se/"));
+var uris = new[] { new Uri("https://example.com/"), new Uri("https://example.com/blog") };
+var result = await crawler.StartAsync(uris);
 ```
 
-## IOC
-To use the .NET IOC, register crawler in your service collection by calling
-`services.RegisterCrawler();`. This will register the `ICrawler` so it can be injected to your services. The registration is transient so there can be several parallel instances of crawlers.
+## Events
 
+There are three events available for monitoring crawl progress:
+
+### CrawlerCompleteEvent
+
+Fires when the entire crawl has finished. Useful for background crawling without awaiting the result.
+
+```csharp
+var crawler = new Crawler();
+crawler.CrawlerCompleteEvent += (s, e) =>
+{
+    var result = e.CrawlerResult;
+    Console.WriteLine($"Completed with {result.GetRequestedPages().Count()} requests " +
+                      $"and {result.GetFinalPages().Count()} final pages.");
+};
+await crawler.StartAsync(new Uri("https://example.com/"));
 ```
+
+### PageCompleteEvent
+
+Fires each time a page is successfully downloaded (HTTP 2xx).
+
+```csharp
+crawler.PageCompleteEvent += (s, e) =>
+{
+    Console.WriteLine($"Downloaded: {e.CrawlContent.FinalUri} ({e.CrawlContent.StatusCode})");
+};
+```
+
+### PageFailedEvent
+
+Fires when a page download fails (non-2xx status or exception).
+
+```csharp
+crawler.PageFailedEvent += (s, e) =>
+{
+    Console.WriteLine($"Failed: {e.CrawlContent.RequestUri} - {e.CrawlContent.StatusCode}");
+};
+```
+
+## Dependency Injection
+
+Register the crawler in your service collection using `AddCrawler()`. All components are registered as transient, so multiple parallel crawler instances are supported.
+
+```csharp
+services.AddCrawler();
+```
+
+Then inject `ICrawler` into your services:
+
+```csharp
 public class MyService
 {
     private readonly ICrawler _crawler;
@@ -39,73 +93,163 @@ public class MyService
 
     public async Task Crawl(Uri uri)
     {
-        await _crawler.StartAsync(uri);
+        var result = await _crawler.StartAsync(uri);
     }
 }
 ```
 
-## Options
-There are a number of [options](Tharga.Crawler\CrawlerOptions.cs) that can be set for the crawl.
+### ICrawlerProvider
 
-### Example with options
+For scenarios where you need to create crawler instances with custom components at runtime, inject `ICrawlerProvider`:
+
+```csharp
+public class MyService
+{
+    private readonly ICrawlerProvider _crawlerProvider;
+
+    public MyService(ICrawlerProvider crawlerProvider)
+    {
+        _crawlerProvider = crawlerProvider;
+    }
+
+    public async Task Crawl(Uri uri)
+    {
+        var crawler = _crawlerProvider.GetCrawlerInstance(scheduler: myCustomScheduler);
+        var result = await crawler.StartAsync(uri);
+    }
+}
 ```
+
+### Overriding Default Components via DI
+
+You can replace any built-in component by passing `CrawlerRegistrationOptions`:
+
+```csharp
+services.AddCrawler(options =>
+{
+    options.Scheduler = provider => new MyCustomScheduler();
+    options.Downloader = provider => new MyCustomDownloader();
+});
+```
+
+## Options
+
+There are several [options](Tharga.Crawler/CrawlerOptions.cs) that can be configured for each crawl.
+
+| Option | Default | Description |
+|---|---|---|
+| `MaxCrawlTime` | No limit | Maximum total duration for the crawl |
+| `NumberOfProcessors` | 3 | Number of parallel page processors |
+
+### DownloadOptions
+
+| Option | Default | Description |
+|---|---|---|
+| `RetryCount` | 3 | Number of retries for HTTP 5xx errors |
+| `Timeout` | No limit | Timeout per individual page download |
+| `UserAgent` | `UserAgentLibrary.Chrome` | User agent string sent with requests |
+
+### SchedulerOptions
+
+| Option | Default | Description |
+|---|---|---|
+| `MaxQueueCount` | No limit | Maximum items in the queue. New URIs are dropped when the limit is reached |
+
+### Example with Options
+
+```csharp
 var crawler = new Crawler();
 var options = new CrawlerOptions
 {
-    MaxCrawlTime = TimeSpan.FromMinutes(10),    //Limit the total crawl time to 10 minutes.
-    NumberOfProcessors = 5,                     //Run 5 parallel processors. (Default is 3)
+    MaxCrawlTime = TimeSpan.FromMinutes(10),
+    NumberOfProcessors = 5,
     DownloadOptions = new DownloadOptions
     {
-        RetryCount = 3,                         //If a download fails with 5xx, retry 3 times. (Default is 3)
-        Timeout = TimeSpan.FromSeconds(30),     //Time out each page crawl after 30 seconds. (Default is 100 seconds)
-        UserAgent = UserAgentLibrary.Chrome     //Specify a user agent for the httlClient. (Default is none)
+        RetryCount = 3,
+        Timeout = TimeSpan.FromSeconds(30),
+        UserAgent = UserAgentLibrary.Chrome
     },
     SchedulerOptions = new SchedulerOptions
     {
-        MaxQueueCount = null,                   //Number of maximum items to be queued. (Default is no limit)
-        UrlFilters = null                       //Url filters that limit what urls will be queued. (Default is no filter)
+        MaxQueueCount = 1000
     }
 };
-var result = await crawler.StartAsync(new Uri("https://thargelion.se/"), options);```
+var result = await crawler.StartAsync(new Uri("https://example.com/"), options);
 ```
 
+### User Agent Library
+
+The `UserAgentLibrary` class provides built-in user agent strings:
+
+- `UserAgentLibrary.Chrome` (default)
+- `UserAgentLibrary.Firefox`
+- `UserAgentLibrary.Edge`
+- `UserAgentLibrary.Googlebot`
+- `UserAgentLibrary.Bingbot`
+- `UserAgentLibrary.DuckDuckBot`
+
+## Cancellation
+
+All `StartAsync` overloads accept a `CancellationToken`:
+
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+var result = await crawler.StartAsync(new Uri("https://example.com/"), cancellationToken: cts.Token);
+Console.WriteLine($"Cancelled: {result.IsCancelled}, Elapsed: {result.Elapsed}");
+```
+
+## Crawl Results
+
+The `CrawlerResult` returned from `StartAsync` provides:
+
+- `IsCancelled` — whether the crawl was cancelled
+- `Elapsed` — total crawl duration
+- `GetRequestedPages()` — all pages that were requested
+- `GetFinalPages()` — distinct final pages (after following redirects), ordered by redirect count
+
+Each crawled page includes the HTTP status code, redirect chain, final URI, content type, download time, and page title.
+
 ## Engine Components
-There are four main components. The `Crawler` handles the overall process of the crawl.
-It uses the `IDownloader` to download pages, the `IScheduler` to handle the queue and the result of pages and the `IPageProcessor` to handle the finding of links and crawling rules.
+
+The crawler is built from four pluggable components. The `Crawler` orchestrates the overall process, delegating to the `IDownloader`, `IScheduler`, and `IPageProcessor`.
 
 ![Process Diagram](Resources/Tharga.Crawler.Process.svg)
 
-## Built in default behaviour
-There is built in components for basic handling of the crawler.
+## Built-in Components
 
 ### HttpClientDownloader
-Uses the http client to fetch content.
+
+Downloads page content using `HttpClient`. Handles HTTP redirects (301, 302, 303, 307, 308) automatically, tracking the full redirect chain. Extracts the page `<title>` from HTML content.
 
 ### BasicPageProcessor
-This is the component that process each page.
-The input is a page with full html and the output is a list of links found on the page always staying on the domain provided as first uri.
-It uses *HtmlAgilityPack* to process html and find links.
+
+Processes downloaded HTML to extract links. Uses [HtmlAgilityPack](https://html-agility-pack.net/) to parse the DOM and find all `<a href="...">` elements. Resolves relative URLs and stays within the original domain.
 
 ### MemoryScheduler
-Uses the memory for the page queue.
-The method of crawling is shallow, meaning that it first crawls the pages closes to the initial page.
-The scheduler also uses *IUriService*.
 
-## Customize
-It is possible to implement components that will be used instead of the built in components.
-Just creat an implementation of the interfaces or inherit from the built in types.
-Then register the custom version in the IOC and it will be used by the Crawler.
+An in-memory queue that uses a breadth-first (shallow) crawl strategy — pages closest to the starting URI are crawled first. Handles retry logic and uses `IUriService` for URI filtering and mutation.
+
+## Customization
+
+All major components can be replaced by implementing the corresponding interface and registering your implementation via DI.
 
 ### IDownloader
-Used to handle the actual downloading of the content. Possible alternativs could be implementations that uses a CEF or other type of browser to download the content.
+
+Handles downloading page content. Override this to use a headless browser (e.g., Playwright, Puppeteer) instead of `HttpClient`.
 
 ### IPageProcessor
-This interface can be implemented as alternative on how to process the actual html to find links.
+
+Controls how HTML is parsed to extract links. Override this to change link extraction logic or to process non-HTML content.
 
 ### IScheduler
-Implement to handle the queue, both what has not yet been crawled or what has been crawled before.
-Possible versions of the crawler could be a persistable crawler that saves the queue to a database.
+
+Manages the crawl queue and tracks what has been crawled. Override this to persist the queue to a database for resumable crawls.
 
 ### IUriService
-Used to create filters or uri mutations. By default it is used by the *MemoryScheduler*.
-The method *ShouldEnqueueAsync* is called first, after that *MutateUriAsync* is called.
+
+Provides URI filtering and mutation. Called by the scheduler before enqueuing a URI.
+
+- `ShouldEnqueueAsync(Uri parentUri, Uri uri)` — return `false` to skip a URI
+- `MutateUriAsync(Uri uri)` — transform a URI before it is enqueued (e.g., strip query parameters)
+
+By default, the crawler stays on the same domain as the starting URI.
