@@ -49,10 +49,20 @@ public class Crawler : ICrawler
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        foreach (var uri in uris)
+        Task.Run(async () =>
         {
-            await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
-        }
+            try
+            {
+                foreach (var uri in uris)
+                {
+                    await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
+                }
+            }
+            catch(Exception e)
+            {
+                _logger.LogCritical(e, e.Message);
+            }
+        }, linkedTokenSource.Token);
 
         //NOTE: Set a limitation in time to crawl
         if (options.MaxCrawlTime.HasValue)
