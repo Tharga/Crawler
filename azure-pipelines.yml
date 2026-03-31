@@ -8,7 +8,7 @@ variables:
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
   BQC.ForceNewBaseline: false
-  majorMinor: '0.2'
+  majorMinor: '0.3'
 
 stages:
 - stage: Build

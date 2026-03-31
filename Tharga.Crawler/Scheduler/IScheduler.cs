@@ -8,6 +8,7 @@ public interface IScheduler
     event EventHandler<EnqueuedEventArgs> EnqueuedEvent;
 
     Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options);
+    Task EnqueueAsync(ToCrawl[] items, SchedulerOptions options);
     Task<ToCrawlScope> GetQueuedItemScope(CancellationToken cancellationToken);
     IAsyncEnumerable<ToCrawl> GetQueued();
     IAsyncEnumerable<Crawled> GetAllCrawled();

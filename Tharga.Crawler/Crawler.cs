@@ -49,10 +49,8 @@ public class Crawler : ICrawler
 
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        foreach (var uri in uris)
-        {
-            await _scheduler.EnqueueAsync(new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }, options.SchedulerOptions);
-        }
+        var initialItems = uris.Select(uri => new ToCrawl { RequestUri = uri, RetryCount = 0, Parent = null }).ToArray();
+        await _scheduler.EnqueueAsync(initialItems, options.SchedulerOptions);
 
         //NOTE: Set a limitation in time to crawl
         if (options.MaxCrawlTime.HasValue)
@@ -159,10 +157,8 @@ public class Crawler : ICrawler
                             case ResponseCodeCategory.Success:
                                 _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
                                 PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
-                                await foreach (var item in pageProcessor.ProcessAsync(result, options, cancellationToken))
-                                {
-                                    await scheduler.EnqueueAsync(item, options.SchedulerOptions);
-                                }
+                                var discoveredLinks = await pageProcessor.ProcessAsync(result, options, cancellationToken).ToArrayAsync(cancellationToken);
+                                await scheduler.EnqueueAsync(discoveredLinks, options.SchedulerOptions);
 
                                 scope.Commit(result);
 

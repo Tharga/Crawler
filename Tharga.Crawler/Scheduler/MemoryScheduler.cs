@@ -22,21 +22,36 @@ public class MemoryScheduler : IScheduler
 
     public virtual async Task EnqueueAsync(ToCrawl toCrawl, SchedulerOptions options)
     {
-        if (_schedule.Count >= options?.MaxQueueCount)
+        await EnqueueAsync([toCrawl], options);
+    }
+
+    public virtual async Task EnqueueAsync(ToCrawl[] items, SchedulerOptions options)
+    {
+        var enqueued = new List<ToCrawl>();
+
+        foreach (var toCrawl in items)
         {
-            _logger?.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
-            return;
+            if (!await _uriService.ShouldEnqueueAsync(toCrawl.Parent?.RequestUri, toCrawl.RequestUri)) continue;
+
+            if (_schedule.Count >= options?.MaxQueueCount)
+            {
+                _logger?.LogWarning("Queue has {queueCount} items and is full.", _schedule.Count);
+                break;
+            }
+
+            var mutated = toCrawl with { RequestUri = await _uriService.MutateUriAsync(toCrawl.RequestUri) };
+
+            var scheduleItem = new ScheduleItem { ToCrawl = mutated, State = ScheduleItemState.Queued };
+            if (_schedule.TryAdd(mutated.RequestUri, scheduleItem))
+            {
+                enqueued.Add(mutated);
+            }
         }
 
-        if (!await _uriService.ShouldEnqueueAsync(toCrawl.Parent?.RequestUri, toCrawl.RequestUri)) return;
-
-        toCrawl = toCrawl with { RequestUri = await _uriService.MutateUriAsync(toCrawl.RequestUri) };
-
-        var scheduleItem = new ScheduleItem { ToCrawl = toCrawl, State = ScheduleItemState.Queued };
-        if (_schedule.TryAdd(toCrawl.RequestUri, scheduleItem))
+        if (enqueued.Count > 0)
         {
             SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
-            EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(toCrawl));
+            EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(enqueued.ToArray()));
         }
     }
 
