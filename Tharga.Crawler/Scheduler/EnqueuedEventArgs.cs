@@ -4,10 +4,10 @@ namespace Tharga.Crawler.Scheduler;
 
 public class EnqueuedEventArgs : EventArgs
 {
-    internal EnqueuedEventArgs(ToCrawl toCrawl)
+    internal EnqueuedEventArgs(ToCrawl[] items)
     {
-        ToCrawl = toCrawl;
+        Items = items;
     }
 
-    public ToCrawl ToCrawl { get; }
+    public ToCrawl[] Items { get; }
 }
