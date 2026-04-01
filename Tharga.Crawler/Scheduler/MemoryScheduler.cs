@@ -10,6 +10,9 @@ public class MemoryScheduler : IScheduler
     private readonly IUriService _uriService;
     private readonly ILogger<MemoryScheduler> _logger;
     private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
+    private int _queuedCount;
+    private int _crawlingCount;
+    private int _completeCount;
 
     public MemoryScheduler(IUriService uriService, ILogger<MemoryScheduler> logger = null)
     {
@@ -44,13 +47,14 @@ public class MemoryScheduler : IScheduler
             var scheduleItem = new ScheduleItem { ToCrawl = mutated, State = ScheduleItemState.Queued };
             if (_schedule.TryAdd(mutated.RequestUri, scheduleItem))
             {
+                Interlocked.Increment(ref _queuedCount);
                 enqueued.Add(mutated);
             }
         }
 
         if (enqueued.Count > 0)
         {
-            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Enqueue, _queuedCount, _crawlingCount, _completeCount));
             EnqueuedEvent?.Invoke(this, new EnqueuedEventArgs(enqueued.ToArray()));
         }
     }
@@ -71,14 +75,23 @@ public class MemoryScheduler : IScheduler
             var queueUpdate = _schedule.TryUpdate(item.ToCrawl.RequestUri, scheduleToQueue, item);
             if (!queueUpdate) throw new InvalidOperationException("Unable to update queue item.");
 
-            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Crawl, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+            Interlocked.Decrement(ref _queuedCount);
+            Interlocked.Increment(ref _crawlingCount);
+            SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Crawl, _queuedCount, _crawlingCount, _completeCount));
 
             return new ToCrawlScope(item.ToCrawl, (toCrawl, state) =>
             {
                 var scheduleComplete = new ScheduleItem { ToCrawl = toCrawl, State = state };
                 var completeUpdate = _schedule.TryUpdate(item.ToCrawl.RequestUri, scheduleComplete, scheduleToQueue);
                 if (!completeUpdate) throw new InvalidOperationException("Unable to update completed item.");
-                SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Complete, _schedule.Values.Count(x => x.State == ScheduleItemState.Queued), _schedule.Values.Count(x => x.State == ScheduleItemState.Crawling), _schedule.Values.Count(x => x.State == ScheduleItemState.Complete)));
+
+                Interlocked.Decrement(ref _crawlingCount);
+                if (state == ScheduleItemState.Complete)
+                    Interlocked.Increment(ref _completeCount);
+                else
+                    Interlocked.Increment(ref _queuedCount);
+
+                SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Complete, _queuedCount, _crawlingCount, _completeCount));
             });
         }
         finally
