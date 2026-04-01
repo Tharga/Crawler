@@ -20,6 +20,10 @@
       "Bash(rm .claude/feature.md)",
       "Bash(rm .claude/plan.md)"
     ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)"
+    ],
     "additionalDirectories": [
     ]
   }
