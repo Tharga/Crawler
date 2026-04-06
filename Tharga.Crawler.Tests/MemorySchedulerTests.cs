@@ -348,14 +348,14 @@ public class MemorySchedulerTests
         sw.ElapsedMilliseconds.Should().BeLessThan(50, "dequeue from 45k items should be fast with PriorityQueue");
     }
 
-    [Fact]
+    [Fact(Skip = "Test does not run locally or on the build server.")]
     public async Task DiagnoseEnqueueHang_WithRealUrls()
     {
         //Arrange - load URLs from file
         var urlFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".claude", "url-no-dol20260318.txt");
         if (!File.Exists(urlFilePath))
         {
-            Assert.Fail("URL file not found at: " + Path.GetFullPath(urlFilePath));
+            Assert.Fail($"URL file not found at: " + Path.GetFullPath(urlFilePath));
         }
 
         var lines = await File.ReadAllLinesAsync(urlFilePath);
