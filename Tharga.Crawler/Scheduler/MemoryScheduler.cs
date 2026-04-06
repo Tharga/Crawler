@@ -7,9 +7,11 @@ namespace Tharga.Crawler.Scheduler;
 public class MemoryScheduler : IScheduler
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly object _queueLock = new();
     private readonly IUriService _uriService;
     private readonly ILogger<MemoryScheduler> _logger;
     private readonly ConcurrentDictionary<Uri, ScheduleItem> _schedule = new();
+    private readonly PriorityQueue<Uri, (int RetryCount, int Level)> _queuedItems = new();
     private int _queuedCount;
     private int _crawlingCount;
     private int _completeCount;
@@ -47,6 +49,10 @@ public class MemoryScheduler : IScheduler
             var scheduleItem = new ScheduleItem { ToCrawl = mutated, State = ScheduleItemState.Queued };
             if (_schedule.TryAdd(mutated.RequestUri, scheduleItem))
             {
+                lock (_queueLock)
+                {
+                    _queuedItems.Enqueue(mutated.RequestUri, (mutated.RetryCount, mutated.Level));
+                }
                 Interlocked.Increment(ref _queuedCount);
                 enqueued.Add(mutated);
             }
@@ -65,10 +71,19 @@ public class MemoryScheduler : IScheduler
         {
             await _lock.WaitAsync(cancellationToken);
 
-            var item = _schedule.Values
-                .OrderBy(x => x.ToCrawl.RetryCount)
-                .ThenBy(x => x.ToCrawl.Level) //Shallow crawl
-                .FirstOrDefault(x => x.State == ScheduleItemState.Queued);
+            ScheduleItem item = null;
+            lock (_queueLock)
+            {
+                while (_queuedItems.Count > 0)
+                {
+                    var uri = _queuedItems.Dequeue();
+                    if (_schedule.TryGetValue(uri, out var candidate) && candidate.State == ScheduleItemState.Queued)
+                    {
+                        item = candidate;
+                        break;
+                    }
+                }
+            }
             if (item == null) return null;
 
             var scheduleToQueue = item with { State = ScheduleItemState.Crawling };
@@ -87,9 +102,17 @@ public class MemoryScheduler : IScheduler
 
                 Interlocked.Decrement(ref _crawlingCount);
                 if (state == ScheduleItemState.Complete)
+                {
                     Interlocked.Increment(ref _completeCount);
+                }
                 else
+                {
+                    lock (_queueLock)
+                    {
+                        _queuedItems.Enqueue(toCrawl.RequestUri, (toCrawl.RetryCount, toCrawl.Level));
+                    }
                     Interlocked.Increment(ref _queuedCount);
+                }
 
                 SchedulerEvent?.Invoke(this, new SchedulerEventArgs(Action.Complete, _queuedCount, _crawlingCount, _completeCount));
             });

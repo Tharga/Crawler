@@ -263,6 +263,92 @@ public class MemorySchedulerTests
     }
 
     [Fact]
+    public async Task GetQueuedItemScope_ReturnsLowestRetryCountAndLevel()
+    {
+        //Arrange
+        var options = new SchedulerOptions();
+        var uriService = new Mock<IUriService>(MockBehavior.Strict);
+        uriService.Setup(x => x.ShouldEnqueueAsync(It.IsAny<Uri>(), It.IsAny<Uri>())).ReturnsAsync(true);
+        uriService.Setup(x => x.MutateUriAsync(It.IsAny<Uri>())).ReturnsAsync((Uri uri) => uri);
+        var sut = new MemoryScheduler(uriService.Object);
+
+        var parent = new CrawlContent
+        {
+            RequestUri = new Uri("https://example.com/parent"),
+            StatusCode = 200, Redirects = [], ContentType = null,
+            DownloadTime = null, Title = null, Message = null, Content = []
+        };
+
+        var items = new[]
+        {
+            new ToCrawl { RequestUri = new Uri("https://example.com/retry1"), RetryCount = 1 },
+            new ToCrawl { RequestUri = new Uri("https://example.com/level2"), Parent = parent },
+            new ToCrawl { RequestUri = new Uri("https://example.com/first"), RetryCount = 0 },
+        };
+        await sut.EnqueueAsync(items, options);
+
+        //Act
+        using var scope = await sut.GetQueuedItemScope(CancellationToken.None);
+
+        //Assert — RetryCount 0 + Level 0 should come first
+        scope.ToCrawl.RequestUri.Should().Be(new Uri("https://example.com/first"));
+    }
+
+    [Fact]
+    public async Task GetQueuedItemScope_AfterRetry_ReturnsWithCorrectPriority()
+    {
+        //Arrange
+        var options = new SchedulerOptions();
+        var uriService = new Mock<IUriService>(MockBehavior.Strict);
+        uriService.Setup(x => x.ShouldEnqueueAsync(It.IsAny<Uri>(), It.IsAny<Uri>())).ReturnsAsync(true);
+        uriService.Setup(x => x.MutateUriAsync(It.IsAny<Uri>())).ReturnsAsync((Uri uri) => uri);
+        var sut = new MemoryScheduler(uriService.Object);
+
+        var items = new[]
+        {
+            new ToCrawl { RequestUri = new Uri("https://example.com/a"), RetryCount = 0 },
+            new ToCrawl { RequestUri = new Uri("https://example.com/b"), RetryCount = 0 },
+        };
+        await sut.EnqueueAsync(items, options);
+
+        //Act — dequeue first item and retry it (bumps RetryCount to 1)
+        using var scope1 = await sut.GetQueuedItemScope(CancellationToken.None);
+        scope1.Retry();
+
+        //Assert — next dequeue should return /b (RetryCount 0) before /a (RetryCount 1)
+        using var scope2 = await sut.GetQueuedItemScope(CancellationToken.None);
+        scope2.ToCrawl.RequestUri.Should().Be(new Uri("https://example.com/b"));
+
+        using var scope3 = await sut.GetQueuedItemScope(CancellationToken.None);
+        scope3.ToCrawl.RequestUri.Should().Be(new Uri("https://example.com/a"));
+    }
+
+    [Fact]
+    public async Task GetQueuedItemScope_PerformanceWith45kItems()
+    {
+        //Arrange
+        var options = new SchedulerOptions();
+        var uriService = new Mock<IUriService>(MockBehavior.Strict);
+        uriService.Setup(x => x.ShouldEnqueueAsync(It.IsAny<Uri>(), It.IsAny<Uri>())).ReturnsAsync(true);
+        uriService.Setup(x => x.MutateUriAsync(It.IsAny<Uri>())).ReturnsAsync((Uri uri) => uri);
+        var sut = new MemoryScheduler(uriService.Object);
+
+        var items = Enumerable.Range(0, 45_000)
+            .Select(i => new ToCrawl { RequestUri = new Uri($"https://example.com/page{i}") })
+            .ToArray();
+        await sut.EnqueueAsync(items, options);
+
+        //Act
+        var sw = Stopwatch.StartNew();
+        using var scope = await sut.GetQueuedItemScope(CancellationToken.None);
+        sw.Stop();
+
+        //Assert
+        scope.Should().NotBeNull();
+        sw.ElapsedMilliseconds.Should().BeLessThan(50, "dequeue from 45k items should be fast with PriorityQueue");
+    }
+
+    [Fact]
     public async Task DiagnoseEnqueueHang_WithRealUrls()
     {
         //Arrange - load URLs from file
