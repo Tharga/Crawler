@@ -1,18 +1,19 @@
 ﻿using System.Net.Mime;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.Helper;
 
 public static class ByteArrayConverter
 {
-    public static string ToStringContent(this CrawlContent page)
+    public static string ToStringContent(this CrawlContent page, ILogger logger = null)
     {
         if (page == null) return null;
-        return page.Content.ToStringContent(page.ContentType);
+        return page.Content.ToStringContent(page.ContentType, logger);
     }
 
-    public static string ToStringContent(this byte[] data, ContentType contentType)
+    public static string ToStringContent(this byte[] data, ContentType contentType, ILogger logger = null)
     {
         if (data == null || data.Length == 0)
             return string.Empty;
@@ -53,8 +54,7 @@ public static class ByteArrayConverter
             return null;
         }
 
-        //TODO: Log output and output as message
+        logger?.LogWarning("Unsupported content type: {contentType}", contentType.MediaType);
         return null;
-        //throw new NotSupportedException($"Unsupported content type: {contentType.MediaType}");
     }
 }

@@ -36,7 +36,7 @@ public class BasicPageProcessor : IPageProcessor
 
     private async IAsyncEnumerable<ToCrawl> GetLinks(CrawlContent page)
     {
-        var htmlContent = page.Content.ToStringContent(page.ContentType);
+        var htmlContent = page.Content.ToStringContent(page.ContentType, _logger);
 
         var htmlDoc = new HtmlDocument();
         htmlDoc.LoadHtml(htmlContent);
