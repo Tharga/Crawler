@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Tharga.Crawler.Entity;
+﻿using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.SampleConsole;
 
@@ -9,6 +8,5 @@ public class CustomPageProcessor : PageProcessor.BasicPageProcessor
     {
         //yield return new ToCrawl();
         throw new NotImplementedException();
-        Debugger.Break();
     }
 }

@@ -6,7 +6,6 @@ using Moq;
 using Tharga.Crawler.Entity;
 using Tharga.Crawler.Scheduler;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Tharga.Crawler.Tests;
 
