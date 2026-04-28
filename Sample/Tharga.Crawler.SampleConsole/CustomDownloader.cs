@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Tharga.Crawler.Downloader;
+﻿using Tharga.Crawler.Downloader;
 using Tharga.Crawler.Entity;
 
 namespace Tharga.Crawler.SampleConsole;
@@ -10,6 +9,5 @@ public class CustomDownloader : HttpClientDownloader
     {
         //return new CrawlContent();
         throw new NotImplementedException();
-        Debugger.Break();
     }
 }

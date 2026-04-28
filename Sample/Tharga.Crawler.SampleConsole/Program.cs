@@ -8,7 +8,7 @@ using Tharga.Crawler.SampleConsole.Commands;
 
 var services = new ServiceCollection();
 services.AddTransient<CrawlCommand>();
-services.RegisterCrawler();
+services.AddCrawler();
 services.AddLogging(x =>
 {
     x.AddConsole();
