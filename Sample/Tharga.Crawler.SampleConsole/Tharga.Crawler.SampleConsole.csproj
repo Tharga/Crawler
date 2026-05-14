@@ -7,7 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Tharga.Console" Version="3.7.2" />
+		<PackageReference Include="Tharga.Console" Version="4.1.1" />
 	</ItemGroup>
 
 	<ItemGroup>
