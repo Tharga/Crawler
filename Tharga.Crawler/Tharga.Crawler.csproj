@@ -8,7 +8,7 @@
 		<Company>Thargelion AB</Company>
 		<Product>Tharga Crawler</Product>
 		<Description>Crawler framework.</Description>
-		<PackageIconUrl>http://thargelion.se/wp-content/uploads/2019/11/Thargelion-White-Icon-150.png</PackageIconUrl>
+		<PackageIconUrl>https://thargelion.net/assets/component-crawler.png</PackageIconUrl>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://github.com/Tharga/Crawler</PackageProjectUrl>
@@ -30,7 +30,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
 		<PackageReference Include="System.Linq.Async" Version="7.0.1" />
 	</ItemGroup>
 	<ItemGroup>
