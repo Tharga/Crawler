@@ -1,0 +1,53 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "..",
+          "files": [
+            "Tharga.Crawler/Tharga.Crawler.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "includePrivateMembers": false,
+      "disableGitFeatures": false,
+      "disableDefaultFilter": false,
+      "noRestore": false,
+      "namespaceLayout": "flattened",
+      "memberLayout": "samePage",
+      "EnumSortOrder": "alphabetic",
+      "allowCompilationErrors": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["**/*.{md,yml}"],
+        "exclude": ["_site/**", "obj/**"]
+      }
+    ],
+    "resource": [
+      {
+        "files": ["CNAME"]
+      }
+    ],
+    "output": "_site",
+    "globalMetadata": {
+      "_appName": "Tharga.Crawler",
+      "_appTitle": "Tharga.Crawler",
+      "_appLogoPath": "https://thargelion.net/assets/component-crawler.png",
+      "_appFaviconPath": "https://thargelion.net/assets/component-crawler.png",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/Tharga/Crawler",
+        "branch": "master"
+      }
+    },
+    "template": ["default", "modern", "templates/thg"],
+    "postProcessors": ["ExtractSearchIndex"],
+    "keepFileLink": false,
+    "disableGitFeatures": false
+  }
+}

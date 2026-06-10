@@ -7,6 +7,8 @@
 
 A customizable web crawler framework for .NET written in C#. Supports .NET 8, .NET 9, and .NET 10.
 
+📚 Full documentation: [crawler.tharga.net](https://crawler.tharga.net)
+
 ## Installation
 
 ```bash
