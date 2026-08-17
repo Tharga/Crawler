@@ -4,5 +4,4 @@
 - **Shared instructions**: `$DOC_ROOT/Tharga/shared-instructions.md`
 - **Plan directory**: `$DOC_ROOT/Tharga/plans/Toolkit/Crawler`
 - **Backlog**: `$DOC_ROOT/Tharga/Toolkit/Crawler.md`
-- **Incoming requests**: `c:\Users\danie\SynologyDrive\Documents\Notes\Tharga\Requests.md` — check for pending requests for this project on startup
-- **Eplicta requests**: `$DEV_ROOT/Eplicta/plan/requests.md` — check for requests from Eplicta on startup
+- **Incoming requests**: `$DOC_ROOT/Tharga/Requests.md` — check for pending requests for this project on startup
