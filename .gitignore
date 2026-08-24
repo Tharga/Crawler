@@ -401,3 +401,6 @@ FodyWeavers.xsd
 # DocFX generated output
 /docs/_site/
 /docs/api/
+
+# Microsoft.Testing.Platform coverage output directory (--results-directory ./coverage)
+coverage/
