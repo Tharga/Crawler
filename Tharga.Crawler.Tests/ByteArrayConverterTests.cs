@@ -1,5 +1,5 @@
 using System.Net.Mime;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Tharga.Crawler.Helper;

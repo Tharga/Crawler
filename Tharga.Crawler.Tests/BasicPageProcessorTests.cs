@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+﻿using AwesomeAssertions;
 using Moq;
 using System.Net.Mime;
 using Tharga.Crawler.Entity;

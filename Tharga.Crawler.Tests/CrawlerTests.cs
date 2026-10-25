@@ -1,5 +1,5 @@
 ﻿using AutoFixture;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Tharga.Crawler.Downloader;
