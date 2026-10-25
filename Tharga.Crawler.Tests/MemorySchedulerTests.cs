@@ -221,7 +221,7 @@ public class MemorySchedulerTests
             RequestUri = scope.ToCrawl.RequestUri,
             StatusCode = 200,
             Redirects = [],
-            ContentType = new System.Net.Mime.ContentType("text/html"),
+            ContentType = new ContentType("text/html"),
             DownloadTime = TimeSpan.FromMilliseconds(100),
             Title = "Test",
             Message = null,

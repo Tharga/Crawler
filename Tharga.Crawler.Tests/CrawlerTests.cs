@@ -1,5 +1,4 @@
-﻿using AutoFixture;
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Tharga.Crawler.Downloader;
@@ -12,8 +11,6 @@ namespace Tharga.Crawler.Tests;
 
 public class CrawlerTests
 {
-    private readonly Fixture _fixture = new();
-
     [Fact]
     public async Task Basic()
     {

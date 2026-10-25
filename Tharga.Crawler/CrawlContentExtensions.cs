@@ -6,7 +6,7 @@ internal static class CrawlContentExtensions
 {
     public static ResponseCodeCategory GetResponseCodeCategory(this CrawlContent crawlContent)
     {
-        var statusCode = (int)(crawlContent?.StatusCode ?? 0);
+        var statusCode = crawlContent?.StatusCode ?? 0;
 
         if (statusCode >= 100 && statusCode <= 199) return ResponseCodeCategory.Information;
         if (statusCode >= 200 && statusCode <= 299) return ResponseCodeCategory.Success;
