@@ -347,42 +347,23 @@ public class MemorySchedulerTests
         sw.ElapsedMilliseconds.Should().BeLessThan(50, "dequeue from 45k items should be fast with PriorityQueue");
     }
 
-    [Fact(Skip = "Test does not run locally or on the build server.")]
-    public async Task DiagnoseEnqueueHang_WithRealUrls()
+    [Fact]
+    public async Task EnqueueAsync_ChildLinksIntoLargeQueue_CompletesQuickly()
     {
-        //Arrange - load URLs from file
-        var urlFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".claude", "url-no-dol20260318.txt");
-        if (!File.Exists(urlFilePath))
-        {
-            Assert.Fail($"URL file not found at: " + Path.GetFullPath(urlFilePath));
-        }
-
-        var lines = await File.ReadAllLinesAsync(urlFilePath);
-        var uris = lines
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .Select(l => new Uri(l.Trim()))
-            .ToArray();
-
+        //Arrange - a large initial batch, and one page being crawled
+        const int initialCount = 45_000;
         var options = new SchedulerOptions();
-        var uriService = new UriService();
-        var sut = new MemoryScheduler(uriService);
-        sut.SchedulerEvent += (_, e) => { /* subscriber present like in real scenario */ };
+        var sut = new MemoryScheduler(new UriService());
+        sut.SchedulerEvent += (_, _) => { };
 
-        var sw = Stopwatch.StartNew();
-
-        //Act 1 - Enqueue all URLs (initial batch)
-        var initialItems = uris.Select(u => new ToCrawl { RequestUri = u }).ToArray();
+        var initialItems = Enumerable.Range(0, initialCount)
+            .Select(i => new ToCrawl { RequestUri = new Uri($"https://example.com/page{i}") })
+            .ToArray();
         await sut.EnqueueAsync(initialItems, options);
-        var enqueueTime = sw.ElapsedMilliseconds;
 
-        //Act 2 - Simulate crawling the first page
-        sw.Restart();
         using var scope = await sut.GetQueuedItemScope(CancellationToken.None);
-        var dequeueTime = sw.ElapsedMilliseconds;
-
         scope.Should().NotBeNull();
 
-        //Act 3 - Create a fake CrawlContent for the first page
         var crawlResult = new CrawlContent
         {
             RequestUri = scope.ToCrawl.RequestUri,
@@ -395,35 +376,28 @@ public class MemorySchedulerTests
             Content = "<html><body><a href='/page1'>Link1</a></body></html>"u8.ToArray()
         };
 
-        //Act 4 - Create child ToCrawl items (simulating BasicPageProcessor output)
-        var childLinks = Enumerable.Range(1, 113)
+        //Child links as BasicPageProcessor would produce them
+        const int childCount = 113;
+        var childLinks = Enumerable.Range(1, childCount)
             .Select(i => new ToCrawl
             {
-                RequestUri = new Uri($"https://www.riksdagen.se/child-page-{i}/"),
+                RequestUri = new Uri($"https://example.com/child-page-{i}/"),
                 Parent = crawlResult,
                 RetryCount = 0
             })
             .ToArray();
 
-        //Act 5 - Enqueue child items one at a time (like the await foreach loop in Crawler)
-        sw.Restart();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        for (var i = 0; i < childLinks.Length; i++)
+        //Act - enqueue the children one at a time, like the await foreach loop in Crawler, then complete the page
+        var sw = Stopwatch.StartNew();
+        foreach (var childLink in childLinks)
         {
-            if (cts.Token.IsCancellationRequested)
-            {
-                throw new TimeoutException($"EnqueueAsync hung at child item {i} after 30 seconds.");
-            }
-            await sut.EnqueueAsync(childLinks[i], options);
+            await sut.EnqueueAsync(childLink, options);
         }
-        var childEnqueueTime = sw.ElapsedMilliseconds;
-
-        //Act 6 - Complete the scope
-        sw.Restart();
+        sw.Stop();
         scope.Commit(crawlResult);
-        var commitTime = sw.ElapsedMilliseconds;
 
-        //Assert - should complete without hanging
-        childEnqueueTime.Should().BeLessThan(10_000, "enqueuing 113 child links should not take more than 10 seconds");
+        //Assert
+        sw.ElapsedMilliseconds.Should().BeLessThan(10_000, "enqueuing 113 child links should not take more than 10 seconds");
+        (await sut.GetQueued().ToArrayAsync()).Should().HaveCount(initialCount - 1 + childCount);
     }
 }
