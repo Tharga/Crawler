@@ -1,0 +1,7 @@
+root = true
+
+# The options, result and event types are public API: consuming applications set
+# the options and read the results. ReSharper only sees this solution, so it
+# reports those accessors as unused.
+[Tharga.Crawler/{CrawlerOptions.cs,CrawlerResult.cs,CrawlerCompleteEventArgs.cs,PageCompleteEvent.cs,Downloader/DownloadOptions.cs}]
+resharper_unused_auto_property_accessor_global_highlighting = none

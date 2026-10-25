@@ -9,6 +9,8 @@ public record Crawled : ToCrawl
     }
 
     public required int StatusCode { get; init; }
+    // Record equality on crawl results is not relied on; pages are deduplicated by FinalUri.
+    // ReSharper disable once TypeWithSuspiciousEqualityIsUsedInRecord.Global
     public required Uri[] Redirects { get; init; }
     public Uri FinalUri => Redirects?.LastOrDefault() ?? RequestUri;
     public required ContentType ContentType { get; init; }
