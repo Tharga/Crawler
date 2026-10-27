@@ -98,6 +98,19 @@ public class Crawler : ICrawler
 
     async Task RunProcessorAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CrawlerOptions options, CancellationToken cancellationToken)
     {
+        try
+        {
+            await RunProcessorLoopAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, options, cancellationToken);
+        }
+        finally
+        {
+            //NOTE: A worker that stops for any reason must not be counted as working, or the other workers never see the crawl as done.
+            crawlerStates.Crawlers[crawlerNo] = false;
+        }
+    }
+
+    async Task RunProcessorLoopAsync(int crawlerNo, IScheduler scheduler, IPageProcessor pageProcessor, IDownloader downloader, CrawlerStates crawlerStates, CrawlerOptions options, CancellationToken cancellationToken)
+    {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -116,13 +129,13 @@ public class Crawler : ICrawler
                 {
                     crawlerStates.Crawlers[crawlerNo] = true;
 
-                    var result = await downloader.GetAsync(scope.ToCrawl, options.DownloadOptions, cancellationToken);
+                    var result = await DownloadAsync(crawlerNo, downloader, scope.ToCrawl, options, cancellationToken);
                     if (result == null) throw new NullReferenceException($"Downloader did not return anything for '{scope.ToCrawl.RequestUri.AbsoluteUri}'.");
 
                     if (result.StatusCode == 0)
                     {
                         _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
-                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+                        OnPageFailed(result);
                         scope.Commit(result);
                         continue;
                     }
@@ -151,12 +164,12 @@ public class Crawler : ICrawler
                             case ResponseCodeCategory.Information:
                             case ResponseCodeCategory.ClientError:
                                 _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}.", crawlerNo, result.RequestUri, (HttpStatusCode)result.StatusCode);
-                                PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+                                OnPageFailed(result);
                                 scope.Commit(result);
                                 break;
                             case ResponseCodeCategory.Success:
                                 _logger?.LogInformation("Crawler {crawlerNo} processed {uri} with success.", crawlerNo, result.RequestUri);
-                                PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+                                OnPageComplete(result);
                                 var discoveredLinks = await pageProcessor.ProcessAsync(result, options, cancellationToken).ToArrayAsync(cancellationToken);
                                 await scheduler.EnqueueAsync(discoveredLinks, options.SchedulerOptions);
 
@@ -170,15 +183,65 @@ public class Crawler : ICrawler
                     catch (InvalidOperationException e)
                     {
                         _logger?.LogError("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries. {message}", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount, e.Message);
-                        PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+                        OnPageFailed(result);
                         scope.Commit(result);
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 break;
             }
+        }
+    }
+
+    private async Task<CrawlContent> DownloadAsync(int crawlerNo, IDownloader downloader, ToCrawl toCrawl, CrawlerOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await downloader.GetAsync(toCrawl, options.DownloadOptions, cancellationToken);
+        }
+        catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+        {
+            //NOTE: Cancelled without the crawl being cancelled, typically a request timeout. Count it as a failed download so the retry applies.
+            _logger?.LogWarning("Crawler {crawlerNo} timed out downloading {uri}. {message}", crawlerNo, toCrawl.RequestUri, e.Message);
+            return new CrawlContent
+            {
+                RequestUri = toCrawl.RequestUri,
+                StatusCode = 599,
+                Redirects = [],
+                ContentType = null,
+                Content = null,
+                Parent = toCrawl.Parent,
+                RetryCount = toCrawl.RetryCount,
+                Message = e.Message,
+                DownloadTime = null,
+                Title = null
+            };
+        }
+    }
+
+    private void OnPageComplete(CrawlContent result)
+    {
+        try
+        {
+            PageCompleteEvent?.Invoke(this, new PageCompleteEventArgs(result));
+        }
+        catch (Exception e)
+        {
+            _logger?.LogError(e, "A {eventName} handler failed for {uri}. {message}", nameof(PageCompleteEvent), result.RequestUri, e.Message);
+        }
+    }
+
+    private void OnPageFailed(CrawlContent result)
+    {
+        try
+        {
+            PageFailedEvent?.Invoke(this, new PageFailedEventArgs(result));
+        }
+        catch (Exception e)
+        {
+            _logger?.LogError(e, "A {eventName} handler failed for {uri}. {message}", nameof(PageFailedEvent), result.RequestUri, e.Message);
         }
     }
 }
