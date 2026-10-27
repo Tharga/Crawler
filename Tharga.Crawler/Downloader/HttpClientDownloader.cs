@@ -64,7 +64,7 @@ public class HttpClientDownloader : IDownloader
                 Title = title
             };
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }

@@ -66,6 +66,8 @@ crawler.PageCompleteEvent += (s, e) =>
 
 Fires when a page download fails (non-2xx status or exception).
 
+An exception thrown by a `PageCompleteEvent` or `PageFailedEvent` handler is logged and does not stop the crawl.
+
 ```csharp
 crawler.PageFailedEvent += (s, e) =>
 {
@@ -148,7 +150,7 @@ There are several [options](Tharga.Crawler/CrawlerOptions.cs) that can be config
 | Option | Default | Description |
 |---|---|---|
 | `RetryCount` | 3 | Number of retries for HTTP 5xx errors |
-| `Timeout` | No limit | Timeout per individual page download |
+| `Timeout` | No limit | Timeout per individual page download. A download that times out counts as a failed download (status code 599) and is retried like an HTTP 5xx error. |
 | `UserAgent` | `UserAgentLibrary.Chrome` | User agent string sent with requests |
 
 ### SchedulerOptions

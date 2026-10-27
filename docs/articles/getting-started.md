@@ -48,7 +48,7 @@ crawler.PageFailedEvent += (s, e) =>
     Console.WriteLine($"Failed: {e.CrawlContent.RequestUri} - {e.CrawlContent.StatusCode}");
 ```
 
-`PageCompleteEvent` fires on HTTP 2xx responses; `PageFailedEvent` fires on non-2xx or exceptions.
+`PageCompleteEvent` fires on HTTP 2xx responses; `PageFailedEvent` fires on non-2xx or exceptions. An exception thrown by either handler is logged and does not stop the crawl.
 
 ## Dependency injection
 
