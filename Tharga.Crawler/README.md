@@ -20,7 +20,7 @@ var result = await crawler.StartAsync(new Uri("https://example.com/"));
 - **Event-driven** — subscribe to page-level and crawl-level events for real-time progress
 - **Fully pluggable** — replace the downloader, page processor, scheduler, or URI service with your own implementations
 - **DI-ready** — integrates with `Microsoft.Extensions.DependencyInjection` via a single `AddCrawler()` call
-- **Multi-target** — supports .NET 8, .NET 9, and .NET 10
+- **Multi-target** — supports .NET 10 and .NET 11
 
 ## Get Started
 

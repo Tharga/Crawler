@@ -4,7 +4,7 @@ _layout: landing
 
 # Tharga.Crawler
 
-A customizable web crawler framework for .NET, written in C#. Four pluggable components — downloader, page processor, scheduler, URI service — let you crawl a site with one line or replace any piece for headless browsers, persistent queues, custom link extraction, or non-HTML content. Targets **.NET 8, .NET 9, and .NET 10**.
+A customizable web crawler framework for .NET, written in C#. Four pluggable components — downloader, page processor, scheduler, URI service — let you crawl a site with one line or replace any piece for headless browsers, persistent queues, custom link extraction, or non-HTML content. Targets **.NET 10 and .NET 11**.
 
 ## Package
 

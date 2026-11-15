@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub repo Issues](https://img.shields.io/github/issues/Tharga/Crawler?style=flat&logo=github&logoColor=red&label=Issues)](https://github.com/Tharga/Crawler/issues?q=is%3Aopen)
 
-A customizable web crawler framework for .NET written in C#. Supports .NET 8, .NET 9, and .NET 10.
+A customizable web crawler framework for .NET written in C#. Supports .NET 10 and .NET 11.
 
 📚 Full documentation: [crawler.tharga.net](https://crawler.tharga.net)
 

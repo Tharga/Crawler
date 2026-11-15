@@ -6,7 +6,7 @@
 dotnet add package Tharga.Crawler
 ```
 
-Tharga.Crawler targets **.NET 8, .NET 9, and .NET 10**.
+Tharga.Crawler targets **.NET 10 and .NET 11**.
 
 ## Namespace
 
