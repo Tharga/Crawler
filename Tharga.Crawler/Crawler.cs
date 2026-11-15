@@ -89,7 +89,7 @@ public class Crawler : ICrawler
         for (var i = 0; i < options.NumberOfProcessors; i++)
         {
             var crawlerNo = i;
-            crawlerStates.Crawlers.Add(crawlerNo, true);
+            crawlerStates.Crawlers[crawlerNo] = true;
             processorTasks.Add(Task.Run(() => RunProcessorAsync(crawlerNo, scheduler, pageProcessor, downloader, crawlerStates, options, cancellationToken), CancellationToken.None));
         }
 
@@ -115,6 +115,10 @@ public class Crawler : ICrawler
         {
             try
             {
+                // NOTE: Mark this worker busy before asking the scheduler for work. Marking it afterwards leaves a window where the page is taken
+                // but no worker is flagged busy, so the others can conclude that the crawl is done. A worker that gets nothing clears the flag below.
+                crawlerStates.Crawlers[crawlerNo] = true;
+
                 // Take the next URL to crawl from the scheduler.
                 using var scope = await scheduler.GetQueuedItemScope(cancellationToken);
 
@@ -127,8 +131,6 @@ public class Crawler : ICrawler
                 }
                 else
                 {
-                    crawlerStates.Crawlers[crawlerNo] = true;
-
                     var result = await DownloadAsync(crawlerNo, downloader, scope.ToCrawl, options, cancellationToken);
                     if (result == null) throw new NullReferenceException($"Downloader did not return anything for '{scope.ToCrawl.RequestUri.AbsoluteUri}'.");
 
@@ -155,6 +157,7 @@ public class Crawler : ICrawler
                                 else
                                 {
                                     _logger?.LogWarning("Crawler {crawlerNo} failed to processed {uri} with status code {statusCode}. Giving up after {retryCount} retries.", crawlerNo, result.RequestUri, result.StatusCode, result.RetryCount);
+                                    OnPageFailed(result);
                                     scope.Commit(result);
                                 }
 
