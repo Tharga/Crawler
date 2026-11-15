@@ -82,6 +82,51 @@ public class CrawlerTests
     }
 
     [Fact]
+    public async Task Page_that_fails_after_all_retries_raises_PageFailedEvent()
+    {
+        //Arrange
+        var downloader = new FakeDownloader(Pages[1], timeouts: int.MaxValue);
+        var sut = new Crawler(new MemoryScheduler(new UriService()), NoLinksPageProcessor(), downloader);
+        var failed = new ConcurrentBag<Uri>();
+        sut.PageFailedEvent += (_, e) => failed.Add(e.CrawlContent.RequestUri);
+        var options = new CrawlerOptions { NumberOfProcessors = 2, DownloadOptions = new DownloadOptions { RetryCount = 2 } };
+        using var cts = new CancellationTokenSource(TestTimeout * 2);
+
+        //Act
+        await sut.StartAsync(Pages, options, cts.Token).WaitAsync(TestTimeout);
+
+        //Assert
+        failed.Should().BeEquivalentTo([Pages[1]]);
+    }
+
+    [Fact]
+    public async Task Many_workers_crawl_every_discovered_page()
+    {
+        //Arrange
+        const int pageCount = 127;
+        Uri PageUri(int n) => new($"http://aaa.bbb.ccc/p{n}");
+        var pageProcessor = new Mock<IPageProcessor>(MockBehavior.Strict);
+        pageProcessor.Setup(x => x.ProcessAsync(It.IsAny<CrawlContent>(), It.IsAny<CrawlerOptions>(), It.IsAny<CancellationToken>()))
+            .Returns((CrawlContent page, CrawlerOptions _, CancellationToken _) =>
+            {
+                var n = int.Parse(page.RequestUri.AbsolutePath[2..]);
+                return new[] { 2 * n + 1, 2 * n + 2 }
+                    .Where(x => x < pageCount)
+                    .Select(x => new ToCrawl { RequestUri = PageUri(x), RetryCount = 0, Parent = page })
+                    .ToAsyncEnumerable();
+            });
+        var sut = new Crawler(new MemoryScheduler(new UriService()), pageProcessor.Object, new FakeDownloader(null, timeouts: 0));
+        using var cts = new CancellationTokenSource(TestTimeout * 2);
+
+        //Act
+        var result = await sut.StartAsync(PageUri(0), new CrawlerOptions { NumberOfProcessors = 16 }, cts.Token).WaitAsync(TestTimeout);
+
+        //Assert
+        result.IsCancelled.Should().BeFalse();
+        result.Pages.Should().HaveCount(pageCount);
+    }
+
+    [Fact]
     public async Task Exception_from_PageCompleteEvent_handler_does_not_stop_the_crawl()
     {
         //Arrange
